@@ -1,8 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
+import 'guru/data_guru_page.dart';
+import 'siswa/data_siswa_page.dart';
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
@@ -21,34 +22,35 @@ class AdminHomePage extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 56,
+                    height: 56,
                     decoration: const BoxDecoration(
                       color: Color(0xFFE5E7EB),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.person,
-                      size: 32,
+                      size: 38,
                       color: Color(0xFF374151),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Assalamu’alaikum,',
-                          style: AppTextStyle.bodySmall,
+                          style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
                         ),
                         Text(
                           'Admin',
-                          style: AppTextStyle.headingSmall,
+                          style:
+                              AppTextStyle.headingSmall.copyWith(fontSize: 18),
                         ),
                         Text(
                           'Operator Madrasah',
-                          style: AppTextStyle.bodySmall,
+                          style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
                         ),
                       ],
                     ),
@@ -63,6 +65,7 @@ class AdminHomePage extends StatelessWidget {
                     },
                     icon: const Icon(
                       Icons.notifications_none_rounded,
+                      size: 30,
                       color: AppColors.textPrimary,
                     ),
                   ),
@@ -74,7 +77,7 @@ class AdminHomePage extends StatelessWidget {
               // Banner utama
               Container(
                 width: double.infinity,
-                height: 154,
+                height: 160,
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
@@ -85,66 +88,74 @@ class AdminHomePage extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Stack(
                   children: [
                     Positioned(
                       left: 16,
-                      top: 17,
+                      top: 16,
                       right: 12,
                       child: Text(
                         'Kelola madrasah dengan mudah,\n'
                         'semua dalam satu aplikasi. ✨',
                         style: AppTextStyle.headingSmall.copyWith(
                           color: AppColors.white,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
                       ),
                     ),
 
-                   
- 
-
-                     // Gambar masjid di atas bukit
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Image.asset(
-                  'assets/image/masjid.png',
-                    height: 127,
-                    fit: BoxFit.contain,
-                     alignment: Alignment.bottomCenter,
-                  ),
-                 ),
-
+                    // Gambar masjid di atas bukit
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Image.asset(
+                        'assets/image/masjid.png',
+                        height: 120,
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomCenter,
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // Menu utama
-              GridView.count(
-                crossAxisCount: 3,
+              GridView(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.95,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 12,
+                  mainAxisExtent: 112, // tinggi tiap menu (kotak + teks)
+                ),
                 children: [
                   _MenuItem(
                     title: 'Data Guru',
                     icon: Icons.person,
                     color: const Color(0xFF219653),
-                    onTap: () => _showComingSoon(context, 'Data Guru'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DataGuruPage(),
+                      ),
+                    ),
                   ),
                   _MenuItem(
                     title: 'Data Siswa',
                     icon: Icons.person,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => _showComingSoon(context, 'Data Siswa'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DataSiswaPage(),
+                      ),
+                    ),
                   ),
                   _MenuItem(
                     title: 'Data Kelas',
@@ -156,8 +167,7 @@ class AdminHomePage extends StatelessWidget {
                     title: 'Mata Pelajaran',
                     icon: Icons.assignment_outlined,
                     color: const Color(0xFF219653),
-                    onTap: () =>
-                        _showComingSoon(context, 'Mata Pelajaran'),
+                    onTap: () => _showComingSoon(context, 'Mata Pelajaran'),
                   ),
                   _MenuItem(
                     title: 'Jadwal',
@@ -166,10 +176,10 @@ class AdminHomePage extends StatelessWidget {
                     onTap: () => _showComingSoon(context, 'Jadwal'),
                   ),
                   _MenuItem(
-                    title: 'Pengumuman',
-                    icon: Icons.campaign_outlined,
+                    title: 'Materi/video',
+                    icon: Icons.description,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => _showComingSoon(context, 'Pengumuman'),
+                    onTap: () => _showComingSoon(context, 'Materi/video'),
                   ),
                   _MenuItem(
                     title: 'Lainnya',
@@ -218,105 +228,33 @@ class _MenuItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 84,
+            height: 84,
             decoration: BoxDecoration(
               color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
-              size: 40,
+              size: 44,
               color: color,
             ),
           ),
-          const SizedBox(height: 7),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: AppTextStyle.bodySmall.copyWith(
-              fontSize: 10,
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: AppTextStyle.bodyMedium.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
-
-class _HillPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final greenHill = Paint()
-      ..color = const Color(0xFF219653);
-
-    final yellowHill = Paint()
-      ..color = const Color(0xFFF4C65B);
-
-    final orangeHill = Paint()
-      ..color = const Color(0xFFE9A23B);
-
-    final greenPath = Path()
-      ..moveTo(0, 18)
-      ..quadraticBezierTo(
-        size.width * 0.20,
-        size.height * 0.65,
-        size.width * 0.42,
-        size.height * 0.42,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.65,
-        size.height * 0.18,
-        size.width,
-        size.height * 0.55,
-      )
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(greenPath, greenHill);
-
-    final yellowPath = Path()
-      ..moveTo(0, size.height * 0.68)
-      ..quadraticBezierTo(
-        size.width * 0.25,
-        size.height * 0.12,
-        size.width * 0.50,
-        size.height * 0.62,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.75,
-        size.height * 0.18,
-        size.width,
-        size.height * 0.64,
-      )
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(yellowPath, yellowHill);
-
-    final orangePath = Path()
-      ..moveTo(0, size.height * 0.83)
-      ..quadraticBezierTo(
-        size.width * 0.30,
-        size.height * 0.50,
-        size.width * 0.56,
-        size.height * 0.76,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.80,
-        size.height * 0.48,
-        size.width,
-        size.height * 0.80,
-      )
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(orangePath, orangeHill);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
