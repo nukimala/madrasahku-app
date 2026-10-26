@@ -186,13 +186,8 @@ class AdminHomePage extends StatelessWidget {
                     title: 'rekap presensi',
                      icon: Icons.fact_check_outlined,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const PengumumanPage(),
-                      ),
-                    ),
-                  ),
+                   onTap: () => _showComingSoon(context, 'rekap presensi'),
+                      )
                 ],
               ),
             ],
