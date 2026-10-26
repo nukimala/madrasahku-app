@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import '../admin/admin_home_page.dart';
+import 'reset_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -222,26 +222,27 @@ class _LoginPageState extends State<LoginPage> {
                           onSubmitted: (_) => _login(),
                         ),
 
-                        // Lupa password
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              _showMessage(
-                                'Fitur lupa password akan dibuat '
-                                'setelah Firebase terhubung.',
-                              );
-                            },
-                            child: const Text(
-                              'Lupa Password?',
-                              style: TextStyle(
-                                color: green,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                       // Lupa password
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                        onPressed: () {
+                        Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                        builder: (context) => const ResetPasswordPage(),
+                      ),
+                    );
+                  },
+                        child: const Text(
+                        'Lupa Password?',
+                        style: TextStyle(
+                        color: green,
+                        fontWeight: FontWeight.w600,
+                    ),
                         ),
-
+                      ),
+                      ),
                         const SizedBox(height: 8),
 
                         // Tombol masuk

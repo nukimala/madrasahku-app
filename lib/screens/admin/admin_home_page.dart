@@ -5,6 +5,7 @@ import '../../utilis/app_text_style.dart';
 import 'guru/data_guru_page.dart';
 import 'siswa/data_siswa_page.dart';
 
+
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
 
@@ -113,7 +114,7 @@ class AdminHomePage extends StatelessWidget {
                       bottom: 0,
                       child: Image.asset(
                         'assets/image/masjid.png',
-                        height: 120,
+                        height: 180,
                         fit: BoxFit.contain,
                         alignment: Alignment.bottomCenter,
                       ),
@@ -176,16 +177,21 @@ class AdminHomePage extends StatelessWidget {
                     onTap: () => _showComingSoon(context, 'Jadwal'),
                   ),
                   _MenuItem(
-                    title: 'Materi/video',
-                    icon: Icons.description,
+                    title: 'Profil',
+                    icon: Icons.account_circle_outlined,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => _showComingSoon(context, 'Materi/video'),
+                    onTap: () => _showComingSoon(context, 'Profil'),
                   ),
                   _MenuItem(
-                    title: 'Lainnya',
-                    icon: Icons.more_horiz,
-                    color: const Color(0xFF219653),
-                    onTap: () => _showComingSoon(context, 'Lainnya'),
+                    title: 'rekap presensi',
+                     icon: Icons.fact_check_outlined,
+                    color: const Color(0xFF60A5FA),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PengumumanPage(),
+                      ),
+                    ),
                   ),
                 ],
               ),
