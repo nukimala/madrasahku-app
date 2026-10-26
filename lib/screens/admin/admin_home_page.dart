@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
+import 'kelas/data_kelas_page.dart';
 import 'guru/data_guru_page.dart';
+import 'mapel/data_mapel_page.dart';
 import 'siswa/data_siswa_page.dart';
-
 
 class AdminHomePage extends StatelessWidget {
   const AdminHomePage({super.key});
@@ -46,8 +47,9 @@ class AdminHomePage extends StatelessWidget {
                         ),
                         Text(
                           'Admin',
-                          style:
-                              AppTextStyle.headingSmall.copyWith(fontSize: 18),
+                          style: AppTextStyle.headingSmall.copyWith(
+                            fontSize: 18,
+                          ),
                         ),
                         Text(
                           'Operator Madrasah',
@@ -82,10 +84,7 @@ class AdminHomePage extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF35C979),
-                      Color(0xFF4ADE80),
-                    ],
+                    colors: [Color(0xFF35C979), Color(0xFF4ADE80)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -142,9 +141,7 @@ class AdminHomePage extends StatelessWidget {
                     color: const Color(0xFF219653),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const DataGuruPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const DataGuruPage()),
                     ),
                   ),
                   _MenuItem(
@@ -153,22 +150,26 @@ class AdminHomePage extends StatelessWidget {
                     color: const Color(0xFF60A5FA),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const DataSiswaPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const DataSiswaPage()),
                     ),
                   ),
                   _MenuItem(
                     title: 'Data Kelas',
                     icon: Icons.description,
                     color: const Color(0xFF219653),
-                    onTap: () => _showComingSoon(context, 'Data Kelas'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DataKelasPage()),
+                    ),
                   ),
                   _MenuItem(
                     title: 'Mata Pelajaran',
                     icon: Icons.assignment_outlined,
                     color: const Color(0xFF219653),
-                    onTap: () => _showComingSoon(context, 'Mata Pelajaran'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DataMapelPage()),
+                    ),
                   ),
                   _MenuItem(
                     title: 'Jadwal',
@@ -184,10 +185,10 @@ class AdminHomePage extends StatelessWidget {
                   ),
                   _MenuItem(
                     title: 'rekap presensi',
-                     icon: Icons.fact_check_outlined,
+                    icon: Icons.fact_check_outlined,
                     color: const Color(0xFF60A5FA),
-                   onTap: () => _showComingSoon(context, 'rekap presensi'),
-                      )
+                    onTap: () => _showComingSoon(context, 'rekap presensi'),
+                  ),
                 ],
               ),
             ],
@@ -235,11 +236,7 @@ class _MenuItem extends StatelessWidget {
               color: const Color(0xFFF3F4F6),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              icon,
-              size: 44,
-              color: color,
-            ),
+            child: Icon(icon, size: 44, color: color),
           ),
           const SizedBox(height: 8),
           FittedBox(
