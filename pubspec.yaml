@@ -57,6 +57,7 @@ flutter:
 
   assets:
     - assets/image/masjid.png
+    - assets/image/LOGO_MTS.png
 
   # To add custom fonts, add a fonts section here.
 

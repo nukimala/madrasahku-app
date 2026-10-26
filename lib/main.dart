@@ -1,6 +1,5 @@
-
 import 'package:flutter/material.dart';
-import 'screens/admin/admin_home_page.dart';
+import 'screens/auth/splash_screen.dart';
 
 void main() {
   runApp(const MadrasahkuApp());
@@ -21,7 +20,7 @@ class MadrasahkuApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const AdminHomePage(),
+      home: const SplashScreen(),
     );
   }
 }
