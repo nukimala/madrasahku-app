@@ -8,6 +8,7 @@ import '../../utilis/app_text_style.dart';
 
 import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
+import 'tugas/tugas_guru_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -37,6 +38,12 @@ class _GuruHomePageState extends State<GuruHomePage> {
       MaterialPageRoute(builder: (context) => const MateriGuruPage()),
     );
   }
+     void _openTugas() {
+     Navigator.push(
+       context,
+       MaterialPageRoute(builder: (context) => const TugasGuruPage()),
+     );
+   }
 
   Future<void> _openJadwal() async {
     await Navigator.push<void>(
@@ -285,7 +292,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 title: 'Tugas',
                 icon: Icons.description,
                 color: _blue,
-                onTap: () => _showComingSoon('Tugas'),
+                 onTap: _openTugas,
               ),
             ],
           ),
@@ -338,11 +345,11 @@ class _GuruHomePageState extends State<GuruHomePage> {
         onTap: (index) {
           if (index == 0) {
             setState(() => _currentIndex = 0);
-          } else if (index == 1) {
-            _openMateri();
-          } else {
-            const labels = ['Home', 'Materi', 'Tugas', 'Profil'];
-            _showComingSoon(labels[index]);
+             } else if (index == 1) {
+             _openMateri();
+              } else if (index == 2) {
+                _openTugas();
+              } else {
           }
         },
         items: const [
