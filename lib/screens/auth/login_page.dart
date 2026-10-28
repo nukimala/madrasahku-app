@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../admin/admin_home_page.dart';
+import '../siswa/siswa_home_page.dart';
+import '../guru/guru_home_page.dart';
 import '../../services/auth_service.dart';
 import 'reset_password_page.dart';
 
@@ -67,14 +69,14 @@ class _LoginPageState extends State<LoginPage> {
       case 'guru':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const _RoleHomePage(role: 'Guru')),
+          MaterialPageRoute(builder: (_) => const GuruHomePage()),
         );
         break;
 
       case 'siswa':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const _RoleHomePage(role: 'Siswa')),
+          MaterialPageRoute(builder: (_) => const SiswaHomePage()),
         );
         break;
     }
@@ -356,25 +358,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// Halaman sementara untuk Guru dan Siswa
-class _RoleHomePage extends StatelessWidget {
-  final String role;
-
-  const _RoleHomePage({required this.role});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Beranda $role'),
-        backgroundColor: const Color(0xFF219653),
-        foregroundColor: Colors.white,
-      ),
-      body: Center(child: Text('Selamat datang di Beranda $role')),
     );
   }
 }
