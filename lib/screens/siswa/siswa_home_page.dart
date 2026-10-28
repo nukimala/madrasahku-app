@@ -83,7 +83,7 @@ class SiswaHomePage extends StatelessWidget {
                         'jalan meraih ridha Allah',
                         style: AppTextStyle.headingSmall.copyWith(
                           color: AppColors.white,
-                          fontSize: 16,
+                          fontSize: 12,
                         ),
                       ),
                     ),
