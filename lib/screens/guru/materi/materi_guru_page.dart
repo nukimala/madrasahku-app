@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
+import 'tambah_materi_page.dart';
 
 class MateriGuruPage extends StatefulWidget {
   const MateriGuruPage({super.key});
@@ -25,7 +26,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   String _query = '';
 
   // Data dummy materi (nanti bisa diganti dari database)
-  final List<Map<String, String>> _materi = const [
+  final List<Map<String, String>> _materi = [
     {
       'judul': 'Himpunan',
       'bab': 'Bab 3 - Himpunan',
@@ -66,6 +67,26 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
         duration: const Duration(seconds: 2),
       ),
     );
+  }
+
+  Future<void> _bukaTambahMateri() async {
+    final hasil = await Navigator.push<Map<String, String>>(
+      context,
+      MaterialPageRoute(builder: (context) => const TambahMateriPage()),
+    );
+
+    if (hasil != null) {
+      setState(() {
+        _materi.insert(0, {
+          'judul': hasil['judul']!,
+          'bab': '${hasil['mapel']} - ${hasil['kelas']}',
+          'file': hasil['file']!.isEmpty ? 'Belum ada file' : hasil['file']!,
+        });
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Materi "${hasil['judul']}" berhasil ditambahkan')),
+      );
+    }
   }
 
   List<Map<String, String>> get _filteredMateri {
@@ -176,7 +197,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => _showComingSoon('Tambah Materi'),
+                  onPressed: _bukaTambahMateri,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _green,
                     foregroundColor: Colors.white,

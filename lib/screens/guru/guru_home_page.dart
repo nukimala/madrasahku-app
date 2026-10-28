@@ -4,6 +4,7 @@ import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
 import 'materi/materi_guru_page.dart';
+import 'materi/tambah_materi_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -18,7 +19,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
   static const Color _green = Color(0xFF219653);
   static const Color _blue = Color(0xFF60A5FA);
 
-  // Data dummy jadwal hari ini (nanti bisa diganti dari database)
+  // Data dummy jadwal hari ini
   final List<Map<String, String>> _jadwal = const [
     {
       'jam': '07.00 - 08.30',
@@ -42,7 +43,6 @@ class _GuruHomePageState extends State<GuruHomePage> {
       ),
     );
   }
-  void_openMateri() => _showComingSoon('Materi');
     void _openMateri() {
     Navigator.push(
       context,
