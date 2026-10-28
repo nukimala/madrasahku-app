@@ -2,16 +2,33 @@ import 'package:flutter/material.dart';
 
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
+import '../../services/auth_service.dart';
 import 'kelas/data_kelas_page.dart';
 import 'guru/data_guru_page.dart';
 import 'mapel/data_mapel_page.dart';
+import 'profil/admin_profile_page.dart';
 import 'siswa/data_siswa_page.dart';
 
-class AdminHomePage extends StatelessWidget {
+class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
 
   @override
+  State<AdminHomePage> createState() => _AdminHomePageState();
+}
+
+class _AdminHomePageState extends State<AdminHomePage> {
+  Future<void> _openProfile() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminProfilePage()),
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profile = AuthService.instance.adminProfile;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -23,39 +40,52 @@ class AdminHomePage extends StatelessWidget {
               // Header admin
               Row(
                 children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE5E7EB),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 38,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Assalamu’alaikum,',
-                          style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
+                    child: InkWell(
+                      onTap: _openProfile,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE5E7EB),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                size: 38,
+                                color: Color(0xFF374151),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Assalamu’alaikum,',
+                                    style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
+                                  ),
+                                  Text(
+                                    profile.namaLengkap,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
+                                  ),
+                                  Text(
+                                    'Administrator',
+                                    style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          'Admin',
-                          style: AppTextStyle.headingSmall.copyWith(
-                            fontSize: 18,
-                          ),
-                        ),
-                        Text(
-                          'Operator Madrasah',
-                          style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   IconButton(
@@ -181,7 +211,7 @@ class AdminHomePage extends StatelessWidget {
                     title: 'Profil',
                     icon: Icons.account_circle_outlined,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => _showComingSoon(context, 'Profil'),
+                    onTap: _openProfile,
                   ),
                   _MenuItem(
                     title: 'rekap presensi',
