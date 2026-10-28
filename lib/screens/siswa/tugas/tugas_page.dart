@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../Materi/materi_page.dart';
+import '../siswa_home_page.dart';
+import '../profile/profil_siswa_page.dart';
 import 'upload_tugas_page.dart';
 
 enum TugasStatus { aktif, dikumpulkan, selesai }
@@ -13,7 +15,6 @@ class _TugasItem {
   final String fileInfo;
   final TugasStatus status;
   final bool isNew;
-  final String deadline;
 
   const _TugasItem({
     required this.title,
@@ -21,8 +22,11 @@ class _TugasItem {
     required this.fileInfo,
     required this.status,
     this.isNew = false,
-    this.deadline = '12 April 2026, 23.59',
   });
+
+  // Dummy: semua tugas memakai batas waktu yang sama.
+  // Nanti bisa diganti menjadi field biasa saat data datang dari API.
+  String get deadline => '12 April 2026, 23.59';
 }
 
 class TugasPage extends StatefulWidget {
@@ -118,6 +122,14 @@ class _TugasPageState extends State<TugasPage> {
     );
   }
 
+  void _goHome() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const SiswaHomePage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _filtered;
@@ -134,7 +146,7 @@ class _TugasPageState extends State<TugasPage> {
               Row(
                 children: [
                   InkWell(
-                    onTap: () => Navigator.maybePop(context),
+                    onTap: _goHome,
                     borderRadius: BorderRadius.circular(20),
                     child: const Padding(
                       padding: EdgeInsets.all(4),
@@ -244,14 +256,18 @@ class _TugasPageState extends State<TugasPage> {
         selectedFontSize: 10,
         unselectedFontSize: 10,
         onTap: (index) {
+          if (index == 2) return; // sudah di Tugas
           if (index == 0) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            _goHome();
           } else if (index == 1) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (_) => const MateriPage()),
             );
           } else if (index == 3) {
-            _showComingSoon(context, 'Profil');
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
+            );
           }
         },
         items: const [
@@ -269,18 +285,9 @@ class _TugasPageState extends State<TugasPage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
-            label: 'Profil',
+            label: 'Profile',
           ),
         ],
-      ),
-    );
-  }
-
-  static void _showComingSoon(BuildContext context, String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
       ),
     );
   }

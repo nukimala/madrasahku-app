@@ -5,10 +5,11 @@ import '../../utilis/app_text_style.dart';
 
 import 'Materi/materi_page.dart';
 import 'tugas/tugas_page.dart';
+import 'tugas/upload_tugas_page.dart';
+import 'profile/profil_siswa_page.dart';
 
 class SiswaHomePage extends StatelessWidget {
   const SiswaHomePage({super.key});
-
 
   @override
   Widget build(BuildContext context) {
@@ -53,19 +54,6 @@ class SiswaHomePage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Menu notifikasi belum tersedia'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
                 ],
               ),
 
@@ -74,13 +62,13 @@ class SiswaHomePage extends StatelessWidget {
               // Banner utama
               Container(
                 width: double.infinity,
-                height: 154,
+                height: 130,
                 clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF35C979), Color(0xFF4ADE80)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2F9E62), Color(0xFF4ADE80)],
+                    begin: Alignment.bottomLeft,
+                    end: Alignment.topRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -88,26 +76,24 @@ class SiswaHomePage extends StatelessWidget {
                   children: [
                     Positioned(
                       left: 16,
-                      top: 17,
+                      top: 16,
                       right: 12,
                       child: Text(
-                        'Jadikan ilmu sebagai\n'
+                        'Jadikan Ilmu sebagai\n'
                         'jalan meraih ridha Allah',
                         style: AppTextStyle.headingSmall.copyWith(
                           color: AppColors.white,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-
-                    // Gambar masjid di atas bukit
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
                       child: Image.asset(
                         'assets/image/masjid.png',
-                        height: 127,
+                        height: 180,
                         fit: BoxFit.contain,
                         alignment: Alignment.bottomCenter,
                       ),
@@ -116,67 +102,47 @@ class SiswaHomePage extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
-              // Menu utama (2 x 2)
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _MenuItem(
-                          title: 'Materi',
-                          icon: Icons.menu_book_outlined,
-                          color: const Color(0xFF219653),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const MateriPage(),
-                              ),
-                            );
-                          },
+              // Aktivitas Pembelajaran
+              Text(
+                'Aktivitas Pembelajaran',
+                style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActivityCard(
+                      icon: Icons.menu_book_outlined,
+                      count: '5',
+                      label: 'Materi Belum Dibaca',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MateriPage(),
                         ),
-                        const SizedBox(width: 52),
-                        _MenuItem(
-                          title: 'Tugas',
-                          icon: Icons.description,
-                          color: const Color(0xFF60A5FA),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const TugasPage(),
-                              ),
-                            ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _MenuItem(
-                          title: 'Nilai',
-                          icon: Icons.assignment_outlined,
-                          color: const Color(0xFF219653),
-                          onTap: () => _showComingSoon(context, 'Nilai'),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: _ActivityCard(
+                      icon: Icons.assignment_turned_in_outlined,
+                      count: '2',
+                      label: 'Tugas Perlu Dikerjakan',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TugasPage(),
                         ),
-                        const SizedBox(width: 52),
-                        _MenuItem(
-                          title: 'Profil',
-                          icon: Icons.person,
-                          color: const Color(0xFF60A5FA),
-                          onTap: () => _showComingSoon(context, 'Profil'),
-                        ),
-                      ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // Tugas terbaru
               Text(
@@ -185,11 +151,37 @@ class SiswaHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _TaskCard(
-                subject: 'Matematika',
-                title: 'Bab 3 - Persamaan Linear',
-                deadline: 'Batas: 12 April 2026',
+                title: 'Matematika',
+                line1: 'Bab 3 - Persamaan Linear',
+                line2: 'Batas: 12 April 2026',
                 isNew: true,
-                onTap: () => _showComingSoon(context, 'Detail Tugas'),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UploadTugasPage(
+                      title: 'Bab 3 - Persamaan Linear',
+                      subject: 'Matematika',
+                      deadline: '12 April 2026',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _TaskCard(
+                title: 'Hafalan Surat',
+                line1: 'Al-Quran Hadis',
+                line2: 'PPT 2.5 MB',
+                isNew: true,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UploadTugasPage(
+                      title: 'Hafalan Surat',
+                      subject: 'Al-Quran Hadis',
+                      deadline: '12 April 2026',
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -200,7 +192,7 @@ class SiswaHomePage extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         backgroundColor: AppColors.white,
         selectedItemColor: const Color(0xFF219653),
-        unselectedItemColor: const Color(0xFF9CA3AF),
+        unselectedItemColor: const Color(0xFFD1D5DB),
         selectedFontSize: 10,
         unselectedFontSize: 10,
         onTap: (index) {
@@ -213,80 +205,80 @@ class SiswaHomePage extends StatelessWidget {
               context,
             ).push(MaterialPageRoute(builder: (_) => const TugasPage()));
           } else if (index == 3) {
-            _showComingSoon(context, 'Profil');
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
+            );
           }
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
+            icon: Icon(Icons.home_rounded, size: 28),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
+            icon: Icon(Icons.menu_book_outlined, size: 28),
             label: 'Materi',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note_rounded),
+            icon: Icon(Icons.edit_note_rounded, size: 28),
             label: 'Tugas',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profil',
+            icon: Icon(Icons.person_outline, size: 28),
+            label: 'Profile',
           ),
         ],
       ),
     );
   }
 
-  static void _showComingSoon(BuildContext context, String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 }
 
-class _MenuItem extends StatelessWidget {
-  final String title;
+class _ActivityCard extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final String count;
+  final String label;
   final VoidCallback onTap;
 
-  const _MenuItem({
-    required this.title,
+  const _ActivityCard({
     required this.icon,
-    required this.color,
+    required this.count,
+    required this.label,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: AppColors.white,
+      elevation: 4,
+      shadowColor: Colors.black26,
       borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 80,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 26, color: const Color(0xFF219653)),
+              const SizedBox(height: 6),
+              Text(
+                count,
+                style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
               ),
-              child: Icon(icon, size: 40, color: color),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTextStyle.bodySmall.copyWith(fontSize: 10),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: AppTextStyle.bodySmall.copyWith(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -294,16 +286,16 @@ class _MenuItem extends StatelessWidget {
 }
 
 class _TaskCard extends StatelessWidget {
-  final String subject;
   final String title;
-  final String deadline;
+  final String line1;
+  final String line2;
   final bool isNew;
   final VoidCallback onTap;
 
   const _TaskCard({
-    required this.subject,
     required this.title,
-    required this.deadline,
+    required this.line1,
+    required this.line2,
     required this.isNew,
     required this.onTap,
   });
@@ -321,27 +313,35 @@ class _TaskCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.description, size: 30, color: Color(0xFF60A5FA)),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.description,
+                  size: 30,
+                  color: Color(0xFF60A5FA),
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      subject,
+                      title,
                       style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      title,
+                      line1,
                       style: AppTextStyle.bodySmall.copyWith(
                         fontSize: 10,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
-                      deadline,
+                      line2,
                       style: AppTextStyle.bodySmall.copyWith(
                         fontSize: 10,
                         color: AppColors.textPrimary,

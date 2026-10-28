@@ -4,6 +4,8 @@ import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'detail_materi_page.dart';
 import '../siswa_home_page.dart';
+import '../tugas/tugas_page.dart';
+import '../profile/profil_siswa_page.dart';
 
 class MateriPage extends StatefulWidget {
   const MateriPage({super.key});
@@ -34,7 +36,6 @@ class _MateriPageState extends State<MateriPage> {
         _semuaMapel,
         ..._materiList.map((m) => m.subject),
       ];
-
 
   List<_Materi> get _filteredMateri {
     final q = _query.trim().toLowerCase();
@@ -194,13 +195,20 @@ class _MateriPageState extends State<MateriPage> {
         selectedFontSize: 10,
         unselectedFontSize: 10,
         onTap: (index) {
-          if (index == 1) return;
+          if (index == 1) return; // sudah di Materi
           if (index == 0) {
             _goHome(context);
-            return;
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const TugasPage()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
+            );
           }
-          const labels = ['Home', 'Materi', 'Tugas', 'Profile'];
-          _showComingSoon(context, labels[index]);
         },
         items: const [
           BottomNavigationBarItem(
@@ -225,9 +233,10 @@ class _MateriPageState extends State<MateriPage> {
   }
 
   static void _goHome(BuildContext context) {
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const SiswaHomePage()),
+      (route) => false,
     );
   }
 
