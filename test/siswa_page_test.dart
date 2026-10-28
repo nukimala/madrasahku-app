@@ -3,6 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('editing legacy student data opens valid dropdowns', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: DataSiswaPage()));
+
+    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Data Siswa'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('can add and edit a student', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: DataSiswaPage()));
 

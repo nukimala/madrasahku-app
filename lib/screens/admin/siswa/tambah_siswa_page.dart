@@ -48,8 +48,14 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
       _namaController.text = siswa.nama;
       _nisController.text = siswa.nis;
       _tanggalController.text = siswa.tanggalLahir;
-      _selectedKelas = siswa.kelas;
-      _selectedJenisKelamin = siswa.jenisKelamin;
+      final kelas = siswa.kelas.replaceFirst(
+        RegExp(r'^Kelas\s+', caseSensitive: false),
+        '',
+      );
+      _selectedKelas = _kelasList.contains(kelas) ? kelas : null;
+      _selectedJenisKelamin = _jenisKelaminList.contains(siswa.jenisKelamin)
+          ? siswa.jenisKelamin
+          : null;
     }
   }
 
