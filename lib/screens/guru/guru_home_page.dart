@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
+import 'materi/materi_guru_page.dart';
+
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
 
@@ -40,12 +42,13 @@ class _GuruHomePageState extends State<GuruHomePage> {
       ),
     );
   }
-
-  // TODO: ganti dengan Navigator.push ke halaman materi guru
-  // setelah halamannya dibuat, misalnya:
-  // Navigator.push(context,
-  //   MaterialPageRoute(builder: (context) => const GuruMateriPage()));
-  void _openMateri() => _showComingSoon('Materi');
+  void_openMateri() => _showComingSoon('Materi');
+    void _openMateri() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const MateriGuruPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
