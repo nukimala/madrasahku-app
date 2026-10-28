@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/guru_model.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
 class TambahGuruPage extends StatefulWidget {
-  const TambahGuruPage({super.key});
+  final GuruItem? guru;
+
+  const TambahGuruPage({super.key, this.guru});
 
   @override
   State<TambahGuruPage> createState() => _TambahGuruPageState();
@@ -30,6 +33,21 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
     'PAI',
   ];
 
+  bool get _isEditing => widget.guru != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final guru = widget.guru;
+    if (guru != null) {
+      _namaController.text = guru.nama;
+      _nipController.text = guru.nipNuptk;
+      _emailController.text = guru.email;
+      _teleponController.text = guru.telepon;
+      _selectedMapel = guru.mapel;
+    }
+  }
+
   @override
   void dispose() {
     _namaController.dispose();
@@ -42,11 +60,17 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO: simpan data ke service/database
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data guru berhasil ditambahkan')),
+    Navigator.pop(
+      context,
+      GuruItem(
+        nama: _namaController.text.trim(),
+        nipNuptk: _nipController.text.trim(),
+        mapel: _selectedMapel!,
+        email: _emailController.text.trim(),
+        telepon: _teleponController.text.trim(),
+        aktif: widget.guru?.aktif ?? true,
+      ),
     );
-    Navigator.pop(context);
   }
 
   @override
@@ -65,7 +89,7 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Tambah Data Guru',
+          _isEditing ? 'Edit Data Guru' : 'Tambah Data Guru',
           style: AppTextStyle.headingSmall.copyWith(fontSize: 20),
         ),
       ),
@@ -90,14 +114,11 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
                       ),
                       const SizedBox(height: 20),
 
-                      const _FieldLabel('NIP/NUPTK'),
+                      const _FieldLabel('NIP/NUPTK (Opsional)'),
                       _AppTextField(
                         controller: _nipController,
-                        hint: 'Masukkan NIP atau NUPTK',
+                        hint: 'Masukkan NIP atau NUPTK (opsional)',
                         keyboardType: TextInputType.number,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'NIP/NUPTK wajib diisi'
-                            : null,
                       ),
                       const SizedBox(height: 20),
 
@@ -196,7 +217,7 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
                     ),
                   ),
                   child: Text(
-                    '+ Tambah Data Guru',
+                    _isEditing ? 'Simpan Perubahan' : '+ Tambah Data Guru',
                     style: AppTextStyle.button.copyWith(fontSize: 16),
                   ),
                 ),

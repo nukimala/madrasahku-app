@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/siswa_model.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
 class TambahSiswaPage extends StatefulWidget {
-  const TambahSiswaPage({super.key});
+  final SiswaItem? siswa;
+
+  const TambahSiswaPage({super.key, this.siswa});
 
   @override
   State<TambahSiswaPage> createState() => _TambahSiswaPageState();
@@ -35,6 +38,21 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
     'Perempuan',
   ];
 
+  bool get _isEditing => widget.siswa != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final siswa = widget.siswa;
+    if (siswa != null) {
+      _namaController.text = siswa.nama;
+      _nisController.text = siswa.nis;
+      _tanggalController.text = siswa.tanggalLahir;
+      _selectedKelas = siswa.kelas;
+      _selectedJenisKelamin = siswa.jenisKelamin;
+    }
+  }
+
   @override
   void dispose() {
     _namaController.dispose();
@@ -44,9 +62,10 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
   }
 
   Future<void> _pickDate() async {
+    final existingDate = _parseDate(_tanggalController.text);
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(2012, 1, 1),
+      initialDate: existingDate ?? DateTime(2012, 1, 1),
       firstDate: DateTime(1990),
       lastDate: DateTime.now(),
     );
@@ -58,14 +77,31 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
     }
   }
 
+  DateTime? _parseDate(String value) {
+    final parts = value.split('/');
+    if (parts.length != 3) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) return null;
+    return DateTime(year, month, day);
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO: simpan data ke service/database
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data siswa berhasil ditambahkan')),
+    Navigator.pop(
+      context,
+      SiswaItem(
+        nama: _namaController.text.trim(),
+        nis: _nisController.text.trim(),
+        kelas: _selectedKelas!,
+        jenisKelamin: _selectedJenisKelamin!,
+        tanggalLahir: _tanggalController.text.trim(),
+        aktif: widget.siswa?.aktif ?? true,
+      ),
     );
-    Navigator.pop(context);
   }
 
   @override
@@ -84,7 +120,7 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Tambah Data Siswa',
+          _isEditing ? 'Edit Data Siswa' : 'Tambah Data Siswa',
           style: AppTextStyle.headingSmall.copyWith(fontSize: 20),
         ),
       ),
@@ -217,7 +253,7 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
                     ),
                   ),
                   child: Text(
-                    '+ Tambah Data Siswa',
+                    _isEditing ? 'Simpan Perubahan' : '+ Tambah Data Siswa',
                     style: AppTextStyle.button.copyWith(fontSize: 16),
                   ),
                 ),

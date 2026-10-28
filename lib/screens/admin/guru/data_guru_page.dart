@@ -1,21 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/guru_model.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_guru_page.dart';
-
-/// Model sederhana (sementara). Nanti bisa dipindah ke folder models.
-class GuruItem {
-  final String nama;
-  final String mapel;
-  final bool aktif;
-
-  const GuruItem({
-    required this.nama,
-    required this.mapel,
-    this.aktif = true,
-  });
-}
 
 class DataGuruPage extends StatefulWidget {
   const DataGuruPage({super.key});
@@ -30,11 +18,11 @@ class _DataGuruPageState extends State<DataGuruPage> {
 
   // Data dummy, nanti diganti dari service/database
   final List<GuruItem> _guruList = [
-    const GuruItem(nama: 'Ahmad Fauzi', mapel: 'Guru Matematika'),
-    const GuruItem(nama: 'Siti Nurhaliza', mapel: 'Guru Bahasa Indonesia'),
-    const GuruItem(nama: 'Budi Santoso', mapel: 'Guru IPA'),
-    const GuruItem(nama: 'Nur Aini', mapel: 'Guru Bahasa Inggris'),
-    const GuruItem(nama: 'Rizky Maulana', mapel: 'Guru PAI'),
+    const GuruItem(nama: 'Ahmad Fauzi', mapel: 'Matematika'),
+    const GuruItem(nama: 'Siti Nurhaliza', mapel: 'Bahasa Indonesia'),
+    const GuruItem(nama: 'Budi Santoso', mapel: 'IPA'),
+    const GuruItem(nama: 'Nur Aini', mapel: 'Bahasa Inggris'),
+    const GuruItem(nama: 'Rizky Maulana', mapel: 'PAI'),
   ];
 
   @override
@@ -47,10 +35,42 @@ class _DataGuruPageState extends State<DataGuruPage> {
       .where((g) => g.nama.toLowerCase().contains(_keyword.toLowerCase()))
       .toList();
 
-  void _openTambah() {
-    Navigator.push(
+  Future<void> _openTambah() async {
+    final guru = await Navigator.push<GuruItem>(
       context,
       MaterialPageRoute(builder: (_) => const TambahGuruPage()),
+    );
+
+    if (!mounted || guru == null) return;
+
+    setState(() {
+      _guruList.insert(0, guru);
+      _keyword = '';
+      _searchController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data guru berhasil ditambahkan')),
+    );
+  }
+
+  Future<void> _openEdit(GuruItem guru) async {
+    final updatedGuru = await Navigator.push<GuruItem>(
+      context,
+      MaterialPageRoute(builder: (_) => TambahGuruPage(guru: guru)),
+    );
+
+    if (!mounted || updatedGuru == null) return;
+
+    final index = _guruList.indexOf(guru);
+    if (index == -1) return;
+
+    setState(() {
+      _guruList[index] = updatedGuru;
+      _keyword = '';
+      _searchController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data guru berhasil diperbarui')),
     );
   }
 
@@ -99,8 +119,11 @@ class _DataGuruPageState extends State<DataGuruPage> {
         titleSpacing: 0,
         toolbarHeight: 64,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: AppColors.textPrimary, size: 28),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: AppColors.textPrimary,
+            size: 28,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -151,8 +174,11 @@ class _DataGuruPageState extends State<DataGuruPage> {
                 decoration: InputDecoration(
                   hintText: 'Cari nama guru...',
                   hintStyle: AppTextStyle.hint.copyWith(fontSize: 16),
-                  prefixIcon: const Icon(Icons.search,
-                      size: 26, color: AppColors.textPrimary),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 26,
+                    color: AppColors.textPrimary,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -180,13 +206,7 @@ class _DataGuruPageState extends State<DataGuruPage> {
                         final guru = data[i];
                         return _GuruCard(
                           guru: guru,
-                          onEdit: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text('Edit ${guru.nama} belum tersedia')),
-                            );
-                          },
+                          onEdit: () => _openEdit(guru),
                           onDelete: () => _confirmDelete(guru),
                         );
                       },
@@ -204,11 +224,7 @@ BoxDecoration _cardDecoration({double radius = 14}) {
     color: AppColors.white,
     borderRadius: BorderRadius.circular(radius),
     boxShadow: const [
-      BoxShadow(
-        color: Color(0x1F000000),
-        blurRadius: 8,
-        offset: Offset(0, 2),
-      ),
+      BoxShadow(color: Color(0x1F000000), blurRadius: 8, offset: Offset(0, 2)),
     ],
   );
 }
@@ -253,7 +269,7 @@ class _GuruCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  guru.mapel,
+                  'Guru ${guru.mapel}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
@@ -281,8 +297,11 @@ class _GuruCard extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             padding: const EdgeInsets.all(4),
-            icon: const Icon(Icons.more_vert,
-                size: 28, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.more_vert,
+              size: 28,
+              color: AppColors.textPrimary,
+            ),
             onSelected: (v) {
               if (v == 'edit') onEdit();
               if (v == 'hapus') onDelete();
@@ -301,8 +320,10 @@ class _GuruCard extends StatelessWidget {
                 height: 48,
                 child: Text(
                   'Hapus',
-                  style: AppTextStyle.bodyMedium
-                      .copyWith(fontSize: 15, color: AppColors.error),
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 15,
+                    color: AppColors.error,
+                  ),
                 ),
               ),
             ],

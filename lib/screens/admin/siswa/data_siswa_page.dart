@@ -1,21 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/siswa_model.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_siswa_page.dart';
-
-/// Model sederhana (sementara). Nanti bisa dipindah ke folder models.
-class SiswaItem {
-  final String nama;
-  final String kelas;
-  final bool aktif;
-
-  const SiswaItem({
-    required this.nama,
-    required this.kelas,
-    this.aktif = true,
-  });
-}
 
 class DataSiswaPage extends StatefulWidget {
   const DataSiswaPage({super.key});
@@ -30,11 +18,11 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
 
   // Data dummy, nanti diganti dari service/database
   final List<SiswaItem> _siswaList = [
-    const SiswaItem(nama: 'Ahmad Rifai', kelas: 'Kelas VIII A'),
-    const SiswaItem(nama: 'Siti Aisyah', kelas: 'Kelas VIII A'),
-    const SiswaItem(nama: 'Fahri Maulana', kelas: 'Kelas VIII A'),
-    const SiswaItem(nama: 'Naila Putri', kelas: 'Kelas VIII A'),
-    const SiswaItem(nama: 'Muhammad Iqbal', kelas: 'Kelas VIII A'),
+    const SiswaItem(nama: 'Ahmad Rifai', kelas: 'VIII A'),
+    const SiswaItem(nama: 'Siti Aisyah', kelas: 'VIII A'),
+    const SiswaItem(nama: 'Fahri Maulana', kelas: 'VIII A'),
+    const SiswaItem(nama: 'Naila Putri', kelas: 'VIII A'),
+    const SiswaItem(nama: 'Muhammad Iqbal', kelas: 'VIII A'),
   ];
 
   @override
@@ -47,10 +35,42 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
       .where((s) => s.nama.toLowerCase().contains(_keyword.toLowerCase()))
       .toList();
 
-  void _openTambah() {
-    Navigator.push(
+  Future<void> _openTambah() async {
+    final siswa = await Navigator.push<SiswaItem>(
       context,
       MaterialPageRoute(builder: (_) => const TambahSiswaPage()),
+    );
+
+    if (!mounted || siswa == null) return;
+
+    setState(() {
+      _siswaList.insert(0, siswa);
+      _keyword = '';
+      _searchController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data siswa berhasil ditambahkan')),
+    );
+  }
+
+  Future<void> _openEdit(SiswaItem siswa) async {
+    final updatedSiswa = await Navigator.push<SiswaItem>(
+      context,
+      MaterialPageRoute(builder: (_) => TambahSiswaPage(siswa: siswa)),
+    );
+
+    if (!mounted || updatedSiswa == null) return;
+
+    final index = _siswaList.indexOf(siswa);
+    if (index == -1) return;
+
+    setState(() {
+      _siswaList[index] = updatedSiswa;
+      _keyword = '';
+      _searchController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data siswa berhasil diperbarui')),
     );
   }
 
@@ -180,13 +200,7 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
                         final siswa = data[i];
                         return _SiswaCard(
                           siswa: siswa,
-                          onEdit: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Edit ${siswa.nama} belum tersedia')),
-                            );
-                          },
+                          onEdit: () => _openEdit(siswa),
                           onDelete: () => _confirmDelete(siswa),
                         );
                       },
@@ -253,7 +267,7 @@ class _SiswaCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  siswa.kelas,
+                  'Kelas ${siswa.kelas}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
