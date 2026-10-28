@@ -4,6 +4,7 @@ import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
 import 'Materi/materi_page.dart';
+import 'tugas/tugas_page.dart';
 
 class SiswaHomePage extends StatelessWidget {
   const SiswaHomePage({super.key});
@@ -143,7 +144,12 @@ class SiswaHomePage extends StatelessWidget {
                           title: 'Tugas',
                           icon: Icons.description,
                           color: const Color(0xFF60A5FA),
-                          onTap: () => _showComingSoon(context, 'Tugas'),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const TugasPage(),
+                              ),
+                            ),
                         ),
                       ],
                     ),
@@ -203,7 +209,9 @@ class SiswaHomePage extends StatelessWidget {
               context,
             ).push(MaterialPageRoute(builder: (_) => const MateriPage()));
           } else if (index == 2) {
-            _showComingSoon(context, 'Tugas');
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const TugasPage()));
           } else if (index == 3) {
             _showComingSoon(context, 'Profil');
           }
