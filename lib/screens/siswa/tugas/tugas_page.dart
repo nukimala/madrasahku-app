@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../Materi/materi_page.dart';
+import 'upload_tugas_page.dart';
 
 enum TugasStatus { aktif, dikumpulkan, selesai }
 
@@ -12,6 +13,7 @@ class _TugasItem {
   final String fileInfo;
   final TugasStatus status;
   final bool isNew;
+  final String deadline;
 
   const _TugasItem({
     required this.title,
@@ -19,6 +21,7 @@ class _TugasItem {
     required this.fileInfo,
     required this.status,
     this.isNew = false,
+    this.deadline = '12 April 2026, 23.59',
   });
 }
 
@@ -31,7 +34,6 @@ class TugasPage extends StatefulWidget {
 
 class _TugasPageState extends State<TugasPage> {
   static const Color _green = Color(0xFF219653);
-  static const Color _blue = Color(0xFF60A5FA);
 
   // Data dummy (nanti bisa diganti dari API / database)
   static const List<_TugasItem> _allTugas = [
@@ -101,6 +103,19 @@ class _TugasPageState extends State<TugasPage> {
           t.subject.toLowerCase().contains(q);
       return matchStatus && matchQuery;
     }).toList();
+  }
+
+  void _openUpload(_TugasItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UploadTugasPage(
+          title: item.title,
+          subject: item.subject,
+          deadline: item.deadline,
+        ),
+      ),
+    );
   }
 
   @override
@@ -176,7 +191,7 @@ class _TugasPageState extends State<TugasPage> {
                   onChanged: (value) => setState(() => _query = value),
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
                   decoration: InputDecoration(
-                    hintText: 'Cari Materi...',
+                    hintText: 'Cari Tugas...',
                     hintStyle: AppTextStyle.bodySmall.copyWith(
                       fontSize: 12,
                       color: const Color(0xFF9CA3AF),
@@ -211,10 +226,7 @@ class _TugasPageState extends State<TugasPage> {
                           final item = items[index];
                           return _TugasCard(
                             item: item,
-                            onTap: () => _showComingSoon(
-                              context,
-                              'Detail Tugas ${item.title}',
-                            ),
+                            onTap: () => _openUpload(item),
                           );
                         },
                       ),
