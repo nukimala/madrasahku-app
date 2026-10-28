@@ -209,12 +209,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     onTap: () => _showComingSoon(context, 'Jadwal'),
                   ),
                   _MenuItem(
-                    title: 'Profil',
-                    icon: Icons.account_circle_outlined,
-                    color: const Color(0xFF60A5FA),
-                    onTap: _openProfile,
-                  ),
-                  _MenuItem(
                     title: 'rekap presensi',
                     icon: Icons.fact_check_outlined,
                     color: const Color(0xFF60A5FA),
