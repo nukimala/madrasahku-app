@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../admin/admin_home_page.dart';
+import '../../services/auth_service.dart';
 import 'reset_password_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -17,24 +18,15 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   final Map<String, Map<String, String>> _demoUsers = {
-    'admin@madrasahku.sch.id': {
-      'password': 'admin123',
-      'role': 'admin',
-    },
-    'guru@madrasahku.sch.id': {
-      'password': 'guru123',
-      'role': 'guru',
-    },
-    'siswa@madrasahku.sch.id': {
-      'password': 'siswa123',
-      'role': 'siswa',
-    },
+    'admin@madrasahku.sch.id': {'password': 'admin123', 'role': 'admin'},
+    'guru@madrasahku.sch.id': {'password': 'guru123', 'role': 'guru'},
+    'siswa@madrasahku.sch.id': {'password': 'siswa123', 'role': 'siswa'},
   };
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _login() async {
@@ -52,9 +44,11 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
 
+    final authService = AuthService.instance;
     final user = _demoUsers[email];
-
-    if (user == null || user['password'] != password) {
+    if (user != null && user['password'] == password) {
+      authService.startDemoSession(user['role']!);
+    } else if (!authService.login(email, password)) {
       setState(() => _isLoading = false);
       _showMessage('Username/email atau password salah.');
       return;
@@ -62,31 +56,25 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = false);
 
-    switch (user['role']) {
+    switch (authService.currentRole) {
       case 'admin':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const AdminHomePage(),
-          ),
+          MaterialPageRoute(builder: (_) => const AdminHomePage()),
         );
         break;
 
       case 'guru':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const _RoleHomePage(role: 'Guru'),
-          ),
+          MaterialPageRoute(builder: (_) => const _RoleHomePage(role: 'Guru')),
         );
         break;
 
       case 'siswa':
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const _RoleHomePage(role: 'Siswa'),
-          ),
+          MaterialPageRoute(builder: (_) => const _RoleHomePage(role: 'Siswa')),
         );
         break;
     }
@@ -113,14 +101,10 @@ class _LoginPageState extends State<LoginPage> {
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 36),
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 420,
-                    ),
+                    constraints: const BoxConstraints(maxWidth: 420),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -158,10 +142,7 @@ class _LoginPageState extends State<LoginPage> {
                         const Text(
                           'MTs Al-Huda Gondang',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: darkGreen,
-                          ),
+                          style: TextStyle(fontSize: 13, color: darkGreen),
                         ),
 
                         const SizedBox(height: 45),
@@ -222,27 +203,28 @@ class _LoginPageState extends State<LoginPage> {
                           onSubmitted: (_) => _login(),
                         ),
 
-                       // Lupa password
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                        onPressed: () {
-                        Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                        builder: (context) => const ResetPasswordPage(),
-                      ),
-                    );
-                  },
-                        child: const Text(
-                        'Lupa Password?',
-                        style: TextStyle(
-                        color: green,
-                        fontWeight: FontWeight.w600,
-                    ),
+                        // Lupa password
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ResetPasswordPage(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Lupa Password?',
+                              style: TextStyle(
+                                color: green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      ),
                         const SizedBox(height: 8),
 
                         // Tombol masuk
@@ -351,15 +333,8 @@ class _LoginPageState extends State<LoginPage> {
         onSubmitted: onSubmitted,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: Color(0xFF8A9B91),
-            fontSize: 14,
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: const Color(0xFFCACACA),
-            size: 21,
-          ),
+          hintStyle: const TextStyle(color: Color(0xFF8A9B91), fontSize: 14),
+          prefixIcon: Icon(icon, color: const Color(0xFFCACACA), size: 21),
           suffixIcon: suffix,
           filled: true,
           fillColor: Colors.white,
@@ -377,10 +352,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(17),
-            borderSide: const BorderSide(
-              color: Color(0xFF219653),
-              width: 1.2,
-            ),
+            borderSide: const BorderSide(color: Color(0xFF219653), width: 1.2),
           ),
         ),
       ),
@@ -402,9 +374,7 @@ class _RoleHomePage extends StatelessWidget {
         backgroundColor: const Color(0xFF219653),
         foregroundColor: Colors.white,
       ),
-      body: Center(
-        child: Text('Selamat datang di Beranda $role'),
-      ),
+      body: Center(child: Text('Selamat datang di Beranda $role')),
     );
   }
 }
