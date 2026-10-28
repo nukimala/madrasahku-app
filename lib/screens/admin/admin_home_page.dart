@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import 'kelas/data_kelas_page.dart';
 import 'guru/data_guru_page.dart';
 import 'mapel/data_mapel_page.dart';
+import 'jadwal/data_jadwal_page.dart';
 import 'profil/admin_profile_page.dart';
 import 'siswa/data_siswa_page.dart';
 import 'rekap_presensi_page.dart';
@@ -69,17 +70,23 @@ class _AdminHomePageState extends State<AdminHomePage> {
                                 children: [
                                   Text(
                                     'Assalamu’alaikum,',
-                                    style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
+                                    style: AppTextStyle.bodySmall.copyWith(
+                                      fontSize: 13,
+                                    ),
                                   ),
                                   Text(
                                     profile.namaLengkap,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
+                                    style: AppTextStyle.headingSmall.copyWith(
+                                      fontSize: 18,
+                                    ),
                                   ),
                                   Text(
                                     'Administrator',
-                                    style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
+                                    style: AppTextStyle.bodySmall.copyWith(
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -206,7 +213,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     title: 'Jadwal',
                     icon: Icons.calendar_month_outlined,
                     color: const Color(0xFF60A5FA),
-                    onTap: () => _showComingSoon(context, 'Jadwal'),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DataJadwalPage()),
+                    ),
                   ),
                   _MenuItem(
                     title: 'rekap presensi',
@@ -214,7 +224,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     color: const Color(0xFF60A5FA),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RekapPresensiPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const RekapPresensiPage(),
+                      ),
                     ),
                   ),
                 ],
@@ -222,15 +234,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  static void _showComingSoon(BuildContext context, String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
       ),
     );
   }

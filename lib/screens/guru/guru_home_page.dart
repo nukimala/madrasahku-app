@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../models/jadwal_model.dart';
+import '../../services/auth_service.dart';
+import '../../services/jadwal_service.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
+import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
-import 'materi/tambah_materi_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -19,22 +22,6 @@ class _GuruHomePageState extends State<GuruHomePage> {
   static const Color _green = Color(0xFF219653);
   static const Color _blue = Color(0xFF60A5FA);
 
-  // Data dummy jadwal hari ini
-  final List<Map<String, String>> _jadwal = const [
-    {
-      'jam': '07.00 - 08.30',
-      'mapel': 'Al-Quran Hadis',
-      'kelas': 'Kelas VII A',
-      'status': 'Mengajar',
-    },
-    {
-      'jam': '07.00 - 08.30',
-      'mapel': 'Bahasa Arab',
-      'kelas': 'Kelas VII A',
-      'status': 'Mengajar',
-    },
-  ];
-
   void _showComingSoon(String menu) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -43,15 +30,35 @@ class _GuruHomePageState extends State<GuruHomePage> {
       ),
     );
   }
-    void _openMateri() {
+
+  void _openMateri() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const MateriGuruPage()),
     );
   }
 
+  Future<void> _openJadwal() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const JadwalGuruPage()),
+    );
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
+    final todayIndex = DateTime.now().weekday - 1;
+    final todaySchedules =
+        todayIndex >= 0 && todayIndex < HariSekolah.values.length
+        ? JadwalService.instance.jadwalGuru(
+            tahunAjaran: JadwalService.tahunAjaranTersedia.first,
+            semester: Semester.ganjil,
+            guru: AuthService.instance.currentTeacherName ?? '',
+            hari: HariSekolah.values[todayIndex],
+          )
+        : <JadwalPelajaran>[];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -70,15 +77,33 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 'Jadwal Pelajaran Hari Ini',
                 style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
               ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _openJadwal,
+                  child: const Text('Lihat semua jadwal'),
+                ),
+              ),
               const SizedBox(height: 12),
-              ..._jadwal.map(
-                (j) => Padding(
+              if (todaySchedules.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Belum ada jadwal mengajar hari ini.',
+                    style: AppTextStyle.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ...todaySchedules.map(
+                (jadwal) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _JadwalCard(
-                    jam: j['jam']!,
-                    mapel: j['mapel']!,
-                    kelas: j['kelas']!,
-                    status: j['status']!,
+                    jam:
+                        '${formatMenit(jadwal.mulaiMenit)} - ${formatMenit(jadwal.selesaiMenit)}',
+                    mapel: jadwal.mataPelajaran,
+                    kelas: 'Kelas ${jadwal.kelas} · ${jadwal.ruang}',
+                    status: 'Mengajar',
                   ),
                 ),
               ),
@@ -112,7 +137,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
               ),
               Text(
-                'Bu Siti Nurhazila',
+                AuthService.instance.currentTeacherName ?? 'Guru',
                 style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
               ),
               Text(
@@ -430,10 +455,7 @@ class _JadwalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  jam,
-                  style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
-                ),
+                Text(jam, style: AppTextStyle.bodySmall.copyWith(fontSize: 11)),
                 const SizedBox(height: 2),
                 Text(
                   mapel,

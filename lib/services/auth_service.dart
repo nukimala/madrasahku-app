@@ -36,6 +36,8 @@ class AuthService {
   _DemoAccount? _currentAccount;
 
   String? get currentRole => _currentAccount?.role;
+  String? get currentTeacherName =>
+      _currentAccount?.role == 'guru' ? 'Siti Nurhaliza' : null;
 
   AdminProfile get adminProfile => AdminProfile(
     namaLengkap: _adminAccount.namaLengkap,
