@@ -8,6 +8,10 @@ import '../../utilis/app_text_style.dart';
 
 import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
+import 'presensi/presensi_page.dart';
+import 'presensi/rekap_presensi_page.dart';
+import 'profile/profil_guru_page.dart';
+import 'tugas/tugas_guru_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -22,19 +26,39 @@ class _GuruHomePageState extends State<GuruHomePage> {
   static const Color _green = Color(0xFF219653);
   static const Color _blue = Color(0xFF60A5FA);
 
-  void _showComingSoon(String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   void _openMateri() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const MateriGuruPage()),
+    );
+  }
+
+  void _openTugas() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const TugasGuruPage()),
+    );
+  }
+
+  void _openPresensi() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const PresensiPage()),
+    );
+  }
+
+  void _openProfil() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProfilGuruPage()),
+    );
+  }
+
+  void _openRekap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RekapPresensiGuruPage()),
     );
   }
 
@@ -238,7 +262,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showComingSoon('Mulai Presensi'),
+                onTap: _openPresensi,
                 child: const SizedBox(
                   height: 48,
                   child: Row(
@@ -285,7 +309,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 title: 'Tugas',
                 icon: Icons.description,
                 color: _blue,
-                onTap: () => _showComingSoon('Tugas'),
+                onTap: _openTugas,
               ),
             ],
           ),
@@ -297,14 +321,14 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 title: 'Nilai',
                 icon: Icons.assignment_outlined,
                 color: _green,
-                onTap: () => _showComingSoon('Nilai'),
+                onTap: _openRekap,
               ),
               const SizedBox(width: 52),
               _MenuItem(
                 title: 'Profil',
                 icon: Icons.person,
                 color: _blue,
-                onTap: () => _showComingSoon('Profil'),
+                onTap: _openProfil,
               ),
             ],
           ),
@@ -340,9 +364,10 @@ class _GuruHomePageState extends State<GuruHomePage> {
             setState(() => _currentIndex = 0);
           } else if (index == 1) {
             _openMateri();
-          } else {
-            const labels = ['Home', 'Materi', 'Tugas', 'Profil'];
-            _showComingSoon(labels[index]);
+          } else if (index == 2) {
+            _openTugas();
+          } else if (index == 3) {
+            _openProfil();
           }
         },
         items: const [
