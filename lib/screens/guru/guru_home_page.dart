@@ -9,6 +9,7 @@ import '../../utilis/app_text_style.dart';
 import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
 import 'tugas/tugas_guru_page.dart';
+import 'profile/profil_guru_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -52,6 +53,15 @@ class _GuruHomePageState extends State<GuruHomePage> {
     );
     if (mounted) setState(() {});
   }
+
+  void _openProfil() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const ProfilGuruPage(),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -311,7 +321,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 title: 'Profil',
                 icon: Icons.person,
                 color: _blue,
-                onTap: () => _showComingSoon('Profil'),
+                onTap: _openProfil,
               ),
             ],
           ),
@@ -349,8 +359,10 @@ class _GuruHomePageState extends State<GuruHomePage> {
              _openMateri();
               } else if (index == 2) {
                 _openTugas();
-              } else {
-          }
+              } else if (index == 3) {
+             _openProfil();
+            }
+          
         },
         items: const [
           BottomNavigationBarItem(
