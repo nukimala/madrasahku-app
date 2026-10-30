@@ -7,6 +7,7 @@ import '../jadwal/jadwal_guru_page.dart';
 import '../materi/materi_guru_page.dart';
 import '../tugas/tugas_guru_page.dart';
 import '../../auth/login_page.dart';
+import 'edit_profil_guru_page.dart';
 
 /// Halaman profil guru yang mengikuti gaya desain Figma dan memakai
 /// nama guru dari sesi login aplikasi.
@@ -58,87 +59,35 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
     );
   }
 
-  Future<void> _editProfil() async {
-    final namaController = TextEditingController(text: _namaGuru);
-    final nipController = TextEditingController(text: _nip);
-    final mapelController = TextEditingController(text: _mataPelajaran);
-    final emailController = TextEditingController(text: _email);
-    final waliController = TextEditingController(text: _waliKelas);
-
-    final hasil = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Profil'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _EditField(controller: namaController, label: 'Nama guru'),
-              _EditField(controller: nipController, label: 'NIP'),
-              _EditField(
-                controller: mapelController,
-                label: 'Mata pelajaran diampu',
-                hint: 'Contoh: Al-Quran Hadis, Bahasa Arab',
-              ),
-              _EditField(
-                controller: emailController,
-                label: 'Email',
-                keyboardType: TextInputType.emailAddress,
-              ),
-              _EditField(
-                controller: waliController,
-                label: 'Wali kelas',
-                hint: 'Contoh: VIII A',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _green),
-            onPressed: () => Navigator.pop(dialogContext, {
-              'nama': namaController.text.trim(),
-              'nip': nipController.text.trim(),
-              'mapel': mapelController.text.trim(),
-              'email': emailController.text.trim(),
-              'wali': waliController.text.trim(),
-            }),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-
-    namaController.dispose();
-    nipController.dispose();
-    mapelController.dispose();
-    emailController.dispose();
-    waliController.dispose();
-
-    if (hasil == null || !mounted) return;
-
-    // Nama sesi AuthService tidak diubah di sini karena API untuk memperbarui
-    // data pengguna belum terlihat di kode yang dikirim.
-    setState(() {
-      _nip = hasil['nip'] ?? '';
-      _mataPelajaran = hasil['mapel'] ?? '';
-      _email = hasil['email'] ?? '';
-      _waliKelas = hasil['wali'] ?? '';
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Data profil diperbarui pada tampilan ini. '
-          'Penyimpanan permanen perlu dihubungkan ke layanan/backend profil.',
+Future<void> _editProfil() async {
+  final hasil = await Navigator.push<ProfilGuruData>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => EditProfilGuruPage(
+        profile: ProfilGuruData(
+          nama: _namaGuru,
+          nip: _nip,
+          mataPelajaran: _mataPelajaran,
+          email: _email,
+          waliKelas: _waliKelas,
         ),
       ),
-    );
-  }
+    ),
+  );
+
+  if (hasil == null || !mounted) return;
+
+  setState(() {
+    _nip = hasil.nip;
+    _mataPelajaran = hasil.mataPelajaran;
+    _email = hasil.email;
+    _waliKelas = hasil.waliKelas;
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Profil berhasil diperbarui.')),
+  );
+}
 
   Future<void> _ubahPassword() async {
     final passwordLama = TextEditingController();
