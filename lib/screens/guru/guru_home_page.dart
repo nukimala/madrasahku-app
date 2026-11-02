@@ -11,6 +11,10 @@ import 'materi/materi_guru_page.dart';
 import 'tugas/tugas_guru_page.dart';
 import 'profile/profil_guru_page.dart';
 
+
+import '../../services/presensi_service.dart';
+import 'presensi/presensi_scan_page.dart';
+
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
 
@@ -62,6 +66,25 @@ class _GuruHomePageState extends State<GuruHomePage> {
     ),
   );
 }
+
+  Future<void> _openPresensi() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const PresensiScanPage()),
+    );
+    if (mounted) setState(() {}); // refresh status presensi di home
+  }
+
+  String _jam(DateTime? t) => t == null
+      ? '--.--'
+      : '${t.hour.toString().padLeft(2, '0')}.${t.minute.toString().padLeft(2, '0')}';
+
+  String _teksStatusPresensi() {
+    final guru = AuthService.instance.currentTeacherName ?? '';
+    final p = PresensiService.instance.hariIni(guru);
+    if (p == null || p.logs.isEmpty) return 'Belum presensi';
+    return 'Datang ${_jam(p.jamDatang)} · Pulang ${_jam(p.jamPulang)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -213,13 +236,13 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '07.00 - 14.00',
-                  style: AppTextStyle.bodySmall.copyWith(
-                    color: AppColors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    _teksStatusPresensi(),
+                    style: AppTextStyle.bodySmall.copyWith(
+                      color: AppColors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -255,7 +278,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showComingSoon('Mulai Presensi'),
+                onTap: _openPresensi,
                 child: const SizedBox(
                   height: 48,
                   child: Row(
