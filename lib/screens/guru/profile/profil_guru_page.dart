@@ -534,36 +534,30 @@ class _SettingTile extends StatelessWidget {
   }
 }
 
-class _EditField extends StatelessWidget {
-  const _EditField({
-    required this.controller,
-    required this.label,
-    this.hint,
-    this.obscureText = false,
-    this.keyboardType,
-  });
+    class _EditField extends StatelessWidget {
+      const _EditField({
+        required this.controller,
+        required this.label,
+        this.obscureText = false,
+      });
 
-  final TextEditingController controller;
-  final String label;
-  final String? hint;
-  final bool obscureText;
-  final TextInputType? keyboardType;
+      final TextEditingController controller;
+      final String label;
+      final bool obscureText;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
-          isDense: true,
-        ),
-      ),
-    );
-  }
-}
+      @override
+      Widget build(BuildContext context) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: TextField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+        );
+      }
+    }
