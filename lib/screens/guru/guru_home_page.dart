@@ -9,11 +9,6 @@ import '../../utilis/app_text_style.dart';
 import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
 import 'tugas/tugas_guru_page.dart';
-import 'profile/profil_guru_page.dart';
-
-
-import '../../services/presensi_service.dart';
-import 'presensi/presensi_scan_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -26,7 +21,9 @@ class _GuruHomePageState extends State<GuruHomePage> {
   int _currentIndex = 0;
 
   static const Color _green = Color(0xFF219653);
-  static const Color _blue = Color(0xFF60A5FA);
+
+  // Jumlah tugas yang perlu dinilai .
+  final int _tugasPerluDinilai = 2;
 
   void _showComingSoon(String menu) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -43,12 +40,13 @@ class _GuruHomePageState extends State<GuruHomePage> {
       MaterialPageRoute(builder: (context) => const MateriGuruPage()),
     );
   }
-     void _openTugas() {
-     Navigator.push(
-       context,
-       MaterialPageRoute(builder: (context) => const TugasGuruPage()),
-     );
-   }
+
+  void _openTugas() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const TugasGuruPage()),
+    );
+  }
 
   Future<void> _openJadwal() async {
     await Navigator.push<void>(
@@ -58,36 +56,9 @@ class _GuruHomePageState extends State<GuruHomePage> {
     if (mounted) setState(() {});
   }
 
-  void _openProfil() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const ProfilGuruPage(),
-    ),
-  );
-}
-
-  Future<void> _openPresensi() async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute(builder: (_) => const PresensiScanPage()),
-    );
-    if (mounted) setState(() {}); // refresh status presensi di home
-  }
-
-  String _jam(DateTime? t) => t == null
-      ? '--.--'
-      : '${t.hour.toString().padLeft(2, '0')}.${t.minute.toString().padLeft(2, '0')}';
-
-  String _teksStatusPresensi() {
-    final guru = AuthService.instance.currentTeacherName ?? '';
-    final p = PresensiService.instance.hariIni(guru);
-    if (p == null || p.logs.isEmpty) return 'Belum presensi';
-    return 'Datang ${_jam(p.jamDatang)} · Pulang ${_jam(p.jamPulang)}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Jadwal guru yang login pada hari ini
     final todayIndex = DateTime.now().weekday - 1;
     final todaySchedules =
         todayIndex >= 0 && todayIndex < HariSekolah.values.length
@@ -110,19 +81,38 @@ class _GuruHomePageState extends State<GuruHomePage> {
               _buildHeader(),
               const SizedBox(height: 20),
               _buildPresensiCard(),
-              const SizedBox(height: 24),
-              _buildMenu(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
+
+              // Aktivitas mengajar
               Text(
-                'Jadwal Pelajaran Hari Ini',
+                'Aktivitas Mengajar',
                 style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _openJadwal,
-                  child: const Text('Lihat semua jadwal'),
-                ),
+              const SizedBox(height: 12),
+              _buildAktivitas(jumlahJadwal: todaySchedules.length),
+              const SizedBox(height: 24),
+
+              // Jadwal pelajaran hari ini
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Jadwal Pelajaran',
+                      style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _openJadwal,
+                    child: const Text(
+                      'Lihat semua',
+                      style: TextStyle(
+                        color: _green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (todaySchedules.isEmpty)
@@ -137,7 +127,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 ),
               ...todaySchedules.map(
                 (jadwal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 14),
                   child: _JadwalCard(
                     jam:
                         '${formatMenit(jadwal.mulaiMenit)} - ${formatMenit(jadwal.selesaiMenit)}',
@@ -236,13 +226,13 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                    _teksStatusPresensi(),
-                    style: AppTextStyle.bodySmall.copyWith(
-                      color: AppColors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  '07.00 - 14.00',
+                  style: AppTextStyle.bodySmall.copyWith(
+                    color: AppColors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
               ],
             ),
           ),
@@ -278,7 +268,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: _openPresensi,
+                onTap: () => _showComingSoon('Mulai Presensi'),
                 child: const SizedBox(
                   height: 48,
                   child: Row(
@@ -305,51 +295,28 @@ class _GuruHomePageState extends State<GuruHomePage> {
     );
   }
 
-  // Menu utama (2 x 2)
-  Widget _buildMenu() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _MenuItem(
-                title: 'Materi',
-                icon: Icons.menu_book_outlined,
-                color: _green,
-                onTap: _openMateri,
-              ),
-              const SizedBox(width: 52),
-              _MenuItem(
-                title: 'Tugas',
-                icon: Icons.description,
-                color: _blue,
-                 onTap: _openTugas,
-              ),
-            ],
+  //jumlah jadwal hari ini & tugas perlu dinilai
+  Widget _buildAktivitas({required int jumlahJadwal}) {
+    return Row(
+      children: [
+        Expanded(
+          child: _AktivitasCard(
+            icon: Icons.calendar_month_outlined,
+            jumlah: '$jumlahJadwal',
+            label: 'jadwal hari ini',
+            onTap: _openJadwal,
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _MenuItem(
-                title: 'Nilai',
-                icon: Icons.assignment_outlined,
-                color: _green,
-                onTap: () => _showComingSoon('Nilai'),
-              ),
-              const SizedBox(width: 52),
-              _MenuItem(
-                title: 'Profil',
-                icon: Icons.person,
-                color: _blue,
-                onTap: _openProfil,
-              ),
-            ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _AktivitasCard(
+            icon: Icons.assignment_turned_in_outlined,
+            jumlah: '$_tugasPerluDinilai',
+            label: 'Tugas Perlu Dinilai',
+            onTap: _openTugas,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -378,14 +345,13 @@ class _GuruHomePageState extends State<GuruHomePage> {
         onTap: (index) {
           if (index == 0) {
             setState(() => _currentIndex = 0);
-             } else if (index == 1) {
-             _openMateri();
-              } else if (index == 2) {
-                _openTugas();
-              } else if (index == 3) {
-             _openProfil();
-            }
-          
+          } else if (index == 1) {
+            _openMateri();
+          } else if (index == 2) {
+            _openTugas();
+          } else {
+            _showComingSoon('Profil');
+          }
         },
         items: const [
           BottomNavigationBarItem(
@@ -410,49 +376,68 @@ class _GuruHomePageState extends State<GuruHomePage> {
   }
 }
 
-class _MenuItem extends StatelessWidget {
-  final String title;
+// Kartu ringkasan aktivitas 
+class _AktivitasCard extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final String jumlah;
+  final String label;
   final VoidCallback onTap;
 
-  const _MenuItem({
-    required this.title,
+  const _AktivitasCard({
     required this.icon,
-    required this.color,
+    required this.jumlah,
+    required this.label,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 84,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          height: 120,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1A000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
-              child: Icon(icon, size: 44, color: color),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              style: AppTextStyle.bodyMedium.copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, size: 30, color: const Color(0xFF219653)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    jumlah,
+                    style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyle.bodySmall.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
