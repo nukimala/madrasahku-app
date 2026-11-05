@@ -69,6 +69,26 @@ void main() {
     expect(await service.simpan(schedule(start: 500, end: 490)), isNotNull);
   });
 
+  test('adds and persists sequential academic years', () async {
+    expect(await service.tambahTahunAjaran(' 2094/2095 '), isTrue);
+    expect(service.daftarTahunAjaran, contains('2094/2095'));
+    expect(
+      (await SharedPreferences.getInstance()).getStringList(
+        'jadwal_tahun_ajaran_v1',
+      ),
+      contains('2094/2095'),
+    );
+    expect(await service.tambahTahunAjaran('2094/2095'), isFalse);
+    await expectLater(
+      service.tambahTahunAjaran('2095/2097'),
+      throwsA(isA<FormatException>()),
+    );
+    await expectLater(
+      service.tambahTahunAjaran('tahun baru'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('copies a day while skipping conflicting target slots', () async {
     await service.simpan(
       schedule(

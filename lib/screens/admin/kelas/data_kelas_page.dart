@@ -15,39 +15,52 @@ class DataKelasPage extends StatefulWidget {
 class _DataKelasPageState extends State<DataKelasPage> {
   static final List<KelasItem> _kelasList = [
     const KelasItem(
-      nama: 'VII A',
-      tingkat: 'VII',
-      waliKelas: 'Ahmad Fauzi',
+      nama: '7',
+      tingkat: '7',
+      waliKelas: null,
       tahunAjaran: '2026/2027',
     ),
     const KelasItem(
-      nama: 'VII B',
-      tingkat: 'VII',
-      waliKelas: 'Siti Nurhaliza',
+      nama: '8A',
+      tingkat: '8',
+      waliKelas: null,
       tahunAjaran: '2026/2027',
     ),
     const KelasItem(
-      nama: 'VIII A',
-      tingkat: 'VIII',
-      waliKelas: 'Budi Santoso',
+      nama: '8B',
+      tingkat: '8',
+      waliKelas: null,
       tahunAjaran: '2026/2027',
     ),
     const KelasItem(
-      nama: 'VIII B',
-      tingkat: 'VIII',
-      waliKelas: 'Nur Aini',
+      nama: '8C',
+      tingkat: '8',
+      waliKelas: null,
       tahunAjaran: '2026/2027',
     ),
     const KelasItem(
-      nama: 'VIII C',
-      tingkat: 'VIII',
-      waliKelas: 'Rizky Maulana',
+      nama: '9A',
+      tingkat: '9',
+      waliKelas: null,
+      tahunAjaran: '2026/2027',
+    ),
+    const KelasItem(
+      nama: '9B',
+      tingkat: '9',
+      waliKelas: null,
+      tahunAjaran: '2026/2027',
+    ),
+    const KelasItem(
+      nama: '9C',
+      tingkat: '9',
+      waliKelas: null,
       tahunAjaran: '2026/2027',
     ),
   ];
 
   final TextEditingController _searchController = TextEditingController();
   String _keyword = '';
+  String _selectedTingkat = 'Semua';
 
   @override
   void dispose() {
@@ -58,7 +71,9 @@ class _DataKelasPageState extends State<DataKelasPage> {
   List<KelasItem> get _filtered => _kelasList
       .where(
         (kelas) =>
-            kelas.nama.toLowerCase().contains(_keyword.trim().toLowerCase()),
+            kelas.nama.toLowerCase().contains(_keyword.trim().toLowerCase()) &&
+            (_selectedTingkat == 'Semua' ||
+                kelas.tingkat == _selectedTingkat),
       )
       .toList();
 
@@ -110,12 +125,6 @@ class _DataKelasPageState extends State<DataKelasPage> {
     switch (action) {
       case 'edit':
         _openForm(kelas: kelas);
-      case 'status':
-        setState(() {
-          final index = _kelasList.indexOf(kelas);
-          if (index != -1)
-            _kelasList[index] = kelas.copyWith(aktif: !kelas.aktif);
-        });
       case 'delete':
         _confirmDelete(kelas);
     }
@@ -177,10 +186,22 @@ class _DataKelasPageState extends State<DataKelasPage> {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Column(
           children: [
-            _SearchField(
-              controller: _searchController,
-              hint: 'Cari nama kelas...',
-              onChanged: (value) => setState(() => _keyword = value),
+            Row(
+              children: [
+                Expanded(
+                  child: _SearchField(
+                    controller: _searchController,
+                    hint: 'Cari nama kelas...',
+                    onChanged: (value) => setState(() => _keyword = value),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _TingkatFilter(
+                  value: _selectedTingkat,
+                  onChanged: (value) =>
+                      setState(() => _selectedTingkat = value),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             Expanded(
@@ -197,7 +218,7 @@ class _DataKelasPageState extends State<DataKelasPage> {
                   : ListView.separated(
                       padding: const EdgeInsets.only(bottom: 24),
                       itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      separatorBuilder: (_, _) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final kelas = data[index];
                         return _KelasCard(
@@ -239,13 +260,13 @@ class _KelasCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Jumlah Siswa: ${kelas.jumlahSiswa}',
+                  'Tingkat ${kelas.tingkat}',
                   style: AppTextStyle.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
                 Text(
-                  'Wali: ${kelas.waliKelas} · ${kelas.tahunAjaran}',
+                  'Wali: ${kelas.waliKelas ?? 'Belum ditentukan'} · ${kelas.tahunAjaran}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.bodySmall.copyWith(
@@ -256,16 +277,11 @@ class _KelasCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _StatusBadge(aktif: kelas.aktif),
           PopupMenuButton<String>(
             onSelected: onAction,
             icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              PopupMenuItem(
-                value: 'status',
-                child: Text(kelas.aktif ? 'Nonaktifkan' : 'Aktifkan'),
-              ),
               const PopupMenuItem(value: 'delete', child: Text('Hapus')),
             ],
           ),
@@ -325,23 +341,34 @@ class _DocumentIcon extends StatelessWidget {
   );
 }
 
-class _StatusBadge extends StatelessWidget {
-  final bool aktif;
+class _TingkatFilter extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
 
-  const _StatusBadge({required this.aktif});
+  const _TingkatFilter({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: aktif ? AppColors.primaryLight : const Color(0xFFFEE2E2),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Text(
-      aktif ? 'Aktif' : 'Nonaktif',
-      style: AppTextStyle.bodySmall.copyWith(
-        color: aktif ? AppColors.primaryDark : AppColors.error,
-        fontWeight: FontWeight.w600,
+    height: 54,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    decoration: _cardDecoration(radius: 12),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        key: const ValueKey('filter-tingkat'),
+        value: value,
+        borderRadius: BorderRadius.circular(12),
+        items: const ['Semua', '7', '8', '9']
+            .map(
+              (tingkat) => DropdownMenuItem(
+                key: ValueKey('filter-tingkat-$tingkat'),
+                value: tingkat,
+                child: Text(tingkat == 'Semua' ? 'Semua' : 'Tingkat $tingkat'),
+              ),
+            )
+            .toList(),
+        onChanged: (tingkat) {
+          if (tingkat != null) onChanged(tingkat);
+        },
       ),
     ),
   );

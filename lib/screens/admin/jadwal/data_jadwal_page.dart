@@ -48,6 +48,98 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
     if (saved == true && mounted) setState(() {});
   }
 
+  Future<void> _tambahTahunAjaran() async {
+    final formKey = GlobalKey<FormState>();
+    var inputTahunAjaran = '';
+    final tahunAjaran = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Tambah tahun ajaran', style: AppTextStyle.headingSmall),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            autofocus: true,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'Tahun ajaran',
+              hintText: '2028/2029',
+              helperText: 'Masukkan dua tahun berurutan.',
+            ),
+            onChanged: (value) => inputTahunAjaran = value,
+            validator: (value) {
+              final normalized = value?.trim() ?? '';
+              final match = RegExp(r'^(\d{4})/(\d{4})$').firstMatch(normalized);
+              if (match == null) {
+                return 'Gunakan format YYYY/YYYY.';
+              }
+              final start = int.parse(match.group(1)!);
+              final end = int.parse(match.group(2)!);
+              if (end != start + 1) {
+                return 'Tahun harus berurutan, misalnya 2028/2029.';
+              }
+              if (JadwalService.instance.daftarTahunAjaran.contains(
+                normalized,
+              )) {
+                return 'Tahun ajaran tersebut sudah tersedia.';
+              }
+              return null;
+            },
+            onFieldSubmitted: (_) {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, inputTahunAjaran.trim());
+              }
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(dialogContext, inputTahunAjaran.trim());
+              }
+            },
+            child: const Text('Tambah'),
+          ),
+        ],
+      ),
+    );
+    if (tahunAjaran == null || !mounted) return;
+
+    try {
+      final added = await JadwalService.instance.tambahTahunAjaran(tahunAjaran);
+      if (!mounted) return;
+      if (!added) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tahun ajaran tersebut sudah tersedia.'),
+          ),
+        );
+        return;
+      }
+      setState(() => _tahunAjaran = tahunAjaran);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tahun ajaran $tahunAjaran berhasil ditambahkan.'),
+        ),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tahun ajaran tidak valid: ${error.message}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tahun ajaran gagal disimpan: $error')),
+      );
+    }
+  }
+
   Future<void> _pilihFileExcel() async {
     try {
       final file = await FilePicker.pickFile(
@@ -215,6 +307,17 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                           _tahunAjaran = value!;
                           _filterKelas = null;
                         }),
+                        trailing: IconButton(
+                          tooltip: 'Tambah tahun ajaran',
+                          onPressed: _tambahTahunAjaran,
+                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -375,6 +478,7 @@ class _Selector<T> extends StatelessWidget {
   final List<T> items;
   final String Function(T)? itemLabel;
   final ValueChanged<T?> onChanged;
+  final Widget? trailing;
 
   const _Selector({
     required this.label,
@@ -382,6 +486,7 @@ class _Selector<T> extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.itemLabel,
+    this.trailing,
   });
 
   @override
@@ -392,23 +497,30 @@ class _Selector<T> extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     ),
-    child: DropdownButtonHideUnderline(
-      child: DropdownButton<T>(
-        value: value,
-        isExpanded: true,
-        onChanged: onChanged,
-        items: items
-            .map(
-              (item) => DropdownMenuItem<T>(
-                value: item,
-                child: Text(
-                  itemLabel?.call(item) ?? item.toString(),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            )
-            .toList(),
-      ),
+    child: Row(
+      children: [
+        Expanded(
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T>(
+              value: value,
+              isExpanded: true,
+              onChanged: onChanged,
+              items: items
+                  .map(
+                    (item) => DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(
+                        itemLabel?.call(item) ?? item.toString(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+        ?trailing,
+      ],
     ),
   );
 }

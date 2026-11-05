@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/kelas_model.dart';
+import '../../../services/jadwal_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -20,13 +21,11 @@ class _TambahKelasPageState extends State<TambahKelasPage> {
   late String? _selectedTingkat;
   late String? _selectedWali;
 
-  static const _tingkatList = ['VII', 'VIII', 'IX'];
-  static const _waliKelasList = [
-    'Ahmad Fauzi',
-    'Siti Nurhaliza',
-    'Budi Santoso',
-    'Nur Aini',
-    'Rizky Maulana',
+  static const _waliBelumDitentukan = 'Belum ditentukan';
+  static const _tingkatList = ['7', '8', '9'];
+  static final _waliKelasList = [
+    _waliBelumDitentukan,
+    ...JadwalService.daftarGuru,
   ];
 
   @override
@@ -38,7 +37,7 @@ class _TambahKelasPageState extends State<TambahKelasPage> {
       text: kelas?.tahunAjaran ?? '2026/2027',
     );
     _selectedTingkat = kelas?.tingkat;
-    _selectedWali = kelas?.waliKelas;
+    _selectedWali = kelas?.waliKelas ?? _waliBelumDitentukan;
   }
 
   @override
@@ -56,10 +55,9 @@ class _TambahKelasPageState extends State<TambahKelasPage> {
       KelasItem(
         nama: _namaController.text.trim(),
         tingkat: _selectedTingkat!,
-        waliKelas: _selectedWali!,
+        waliKelas: _selectedWali == _waliBelumDitentukan ? null : _selectedWali,
         tahunAjaran: _tahunController.text.trim(),
         jumlahSiswa: previous?.jumlahSiswa ?? 0,
-        aktif: previous?.aktif ?? true,
       ),
     );
   }
@@ -103,7 +101,7 @@ class _TambahKelasPageState extends State<TambahKelasPage> {
                       const _FieldLabel('Nama Kelas'),
                       _TextInput(
                         controller: _namaController,
-                        hint: 'Contoh: VII A',
+                        hint: 'Contoh: 8A',
                         validator: (value) =>
                             value == null || value.trim().isEmpty
                             ? 'Nama kelas wajib diisi'
@@ -128,8 +126,7 @@ class _TambahKelasPageState extends State<TambahKelasPage> {
                         items: _waliKelasList,
                         onChanged: (value) =>
                             setState(() => _selectedWali = value),
-                        validator: (value) =>
-                            value == null ? 'Pilih wali kelas' : null,
+                        validator: (_) => null,
                       ),
                       const SizedBox(height: 20),
                       const _FieldLabel('Tahun Ajaran'),
@@ -250,7 +247,7 @@ class _DropdownInput extends StatelessWidget {
       ],
     ),
     child: DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       validator: validator,
       onChanged: onChanged,

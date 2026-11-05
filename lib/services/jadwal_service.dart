@@ -9,24 +9,10 @@ class JadwalService {
 
   static final JadwalService instance = JadwalService._();
   static const _storageKey = 'jadwal_pelajaran_v1';
+  static const _schoolYearsStorageKey = 'jadwal_tahun_ajaran_v1';
 
   static const tahunAjaranTersedia = ['2026/2027', '2027/2028'];
-  static const daftarKelas = [
-    '7',
-    '8A',
-    '8B',
-    '8C',
-    '9A',
-    '9B',
-    '9C',
-    'VII A',
-    'VII B',
-    'VIII A',
-    'VIII B',
-    'VIII C',
-    'IX A',
-    'IX B',
-  ];
+  static const daftarKelas = ['7', '8A', '8B', '8C', '9A', '9B', '9C'];
   static const daftarMapel = [
     'Al-Qur’an Hadis',
     'Akidah Akhlak',
@@ -44,11 +30,31 @@ class JadwalService {
     'Informatika/Keterampilan',
   ];
   static const daftarGuru = [
-    'Ahmad Fauzi',
-    'Siti Nurhaliza',
-    'Budi Santoso',
-    'Nur Aini',
-    'Rizky Maulana',
+    'M. Abdul Haris J., S.Pd.I',
+    'Drs. Said',
+    'Sulijadi, MM',
+    'Drs. Sarmin',
+    'M. Musthofa, S.Pd.I',
+    'Farid Kurniawan N, SH',
+    'Subiyatin, S.Si.',
+    'Lilik Rahmawati., S.Pd.',
+    'Agus Setiawan., S.Pd.',
+    'Setyo Jatmiko., S.Pd.',
+    'Sodikin Muslimin., S.Pd.',
+    'Ulfatul Khumaydah, S.H.I',
+    'Siti Amiroh, S.Pd.I',
+    'Agus Budi Irawan., S.Pd.',
+    'Siti Munfarida,S.Pd.I',
+    'Faridatun Nikmah, S.Pd.I',
+    'Intan Rosiana devi, S.Pd.',
+    'Nur Fuad, MA',
+    'Oktavia U.K, S.Pd',
+    'Nurul Chofifah, S.Pd',
+    'M. Syaban Wulana, S.Pd',
+    'Winda Triyana, S.Pd',
+    'Nopi Purwanti, S.Pd',
+    'Kumala Azizatul L., S.Pd',
+    'Titik Yuliati, S.Pd',
   ];
   static const daftarRuang = [
     'Ruang 1',
@@ -59,18 +65,23 @@ class JadwalService {
   ];
 
   final List<JadwalPelajaran> _jadwal = [];
+  final Set<String> _tahunAjaranTambahan = {};
   int _nextId = 1;
   bool _loaded = false;
 
   List<String> get daftarTahunAjaran => {
     ...tahunAjaranTersedia,
+    ..._tahunAjaranTambahan,
     ..._jadwal.map((item) => item.tahunAjaran),
-  }.toList()..sort();
+  }.toList()..sort(_compareSchoolYear);
 
   Future<void> load() async {
     if (_loaded) return;
 
     final preferences = await SharedPreferences.getInstance();
+    _tahunAjaranTambahan.addAll(
+      preferences.getStringList(_schoolYearsStorageKey) ?? const [],
+    );
     final stored = preferences.getString(_storageKey);
     if (stored != null && stored.isNotEmpty) {
       final decoded = jsonDecode(stored);
@@ -92,6 +103,38 @@ class JadwalService {
       );
     }
     _loaded = true;
+  }
+
+  Future<bool> tambahTahunAjaran(String tahunAjaran) async {
+    _ensureLoaded();
+    final normalized = tahunAjaran.trim();
+    final match = RegExp(r'^(\d{4})/(\d{4})$').firstMatch(normalized);
+    if (match == null) {
+      throw const FormatException('Gunakan format tahun ajaran YYYY/YYYY.');
+    }
+
+    final tahunMulai = int.parse(match.group(1)!);
+    final tahunSelesai = int.parse(match.group(2)!);
+    if (tahunSelesai != tahunMulai + 1) {
+      throw const FormatException(
+        'Tahun ajaran harus mencakup dua tahun berurutan, misalnya 2028/2029.',
+      );
+    }
+    if (daftarTahunAjaran.contains(normalized)) return false;
+
+    final updatedYears = {..._tahunAjaranTambahan, normalized};
+    final preferences = await SharedPreferences.getInstance();
+    final saved = await preferences.setStringList(
+      _schoolYearsStorageKey,
+      updatedYears.toList()..sort(_compareSchoolYear),
+    );
+    if (!saved) {
+      throw StateError('Tahun ajaran tidak berhasil disimpan.');
+    }
+    _tahunAjaranTambahan
+      ..clear()
+      ..addAll(updatedYears);
+    return true;
   }
 
   List<JadwalPelajaran> semuaJadwal({
@@ -224,6 +267,7 @@ class JadwalService {
       schedules.add(item.copyWith(id: nextId++));
     }
 
+    _tahunAjaranTambahan.add(tahunAjaran);
     await _save(schedules);
     _nextId = nextId;
     return jadwalBaru.length;
@@ -231,6 +275,13 @@ class JadwalService {
 
   Future<void> _save(List<JadwalPelajaran> schedules) async {
     final preferences = await SharedPreferences.getInstance();
+    final savedYears = await preferences.setStringList(
+      _schoolYearsStorageKey,
+      _tahunAjaranTambahan.toList()..sort(_compareSchoolYear),
+    );
+    if (!savedYears) {
+      throw StateError('Daftar tahun ajaran tidak berhasil disimpan.');
+    }
     final saved = await preferences.setString(
       _storageKey,
       jsonEncode(schedules.map((item) => item.toJson()).toList()),
@@ -310,6 +361,13 @@ class JadwalService {
       return a.jamKe!.compareTo(b.jamKe!);
     }
     return a.mataPelajaran.compareTo(b.mataPelajaran);
+  }
+
+  static int _compareSchoolYear(String a, String b) {
+    final aStart = int.tryParse(a.split('/').first);
+    final bStart = int.tryParse(b.split('/').first);
+    if (aStart != null && bStart != null) return aStart.compareTo(bStart);
+    return a.compareTo(b);
   }
 }
 
