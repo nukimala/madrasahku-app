@@ -220,7 +220,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      
     );
   }
 
@@ -277,57 +277,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
   }
 
-  // Bottom navigation (tab Materi aktif)
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: 1,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        selectedItemColor: _green,
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pop(context); // kembali ke beranda guru
-          } else if (index != 1) {
-            const labels = ['Home', 'Materi', 'Tugas', 'Profil'];
-            _showComingSoon(labels[index]);
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            label: 'Profil',
-          ),
-        ],
-      ),
-    );
-  }
+
 
   static BoxDecoration _cardDecoration({double radius = 14}) {
     return BoxDecoration(
