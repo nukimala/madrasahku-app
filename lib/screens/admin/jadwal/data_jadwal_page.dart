@@ -1,10 +1,15 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/jadwal_model.dart';
+import '../../../services/jadwal_excel_importer.dart';
 import '../../../services/jadwal_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
+import 'pratinjau_impor_jadwal_page.dart';
 import 'tambah_jadwal_page.dart';
+
+enum _TampilanJadwal { daftar, mingguan }
 
 class DataJadwalPage extends StatefulWidget {
   const DataJadwalPage({super.key});
@@ -14,10 +19,18 @@ class DataJadwalPage extends StatefulWidget {
 }
 
 class _DataJadwalPageState extends State<DataJadwalPage> {
+  final _searchController = TextEditingController();
   String _tahunAjaran = JadwalService.tahunAjaranTersedia.first;
   Semester _semester = Semester.ganjil;
-  String _kelas = JadwalService.daftarKelas.first;
-  HariSekolah _hari = HariSekolah.senin;
+  HariSekolah? _filterHari;
+  String? _filterKelas;
+  _TampilanJadwal _tampilan = _TampilanJadwal.daftar;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _openForm({JadwalPelajaran? jadwal}) async {
     final saved = await Navigator.push<bool>(
@@ -26,8 +39,8 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
         builder: (_) => TambahJadwalPage(
           tahunAjaran: _tahunAjaran,
           semester: _semester,
-          kelas: _kelas,
-          hari: _hari,
+          kelas: jadwal?.kelas ?? _filterKelas,
+          hari: jadwal?.hari ?? _filterHari ?? HariSekolah.senin,
           jadwal: jadwal,
         ),
       ),
@@ -35,53 +48,56 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
     if (saved == true && mounted) setState(() {});
   }
 
-  Future<void> _salinHari() async {
-    final targetDay = await showDialog<HariSekolah>(
-      context: context,
-      builder: (dialogContext) => SimpleDialog(
-        title: Text(
-          'Salin jadwal ${_hari.label} ke',
-          style: AppTextStyle.headingSmall,
-        ),
-        children: HariSekolah.values
-            .where((hari) => hari != _hari)
-            .map(
-              (hari) => SimpleDialogOption(
-                onPressed: () => Navigator.pop(dialogContext, hari),
-                child: Text(hari.label),
-              ),
-            )
-            .toList(),
-      ),
-    );
-    if (targetDay == null || !mounted) return;
+  Future<void> _pilihFileExcel() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['xlsx'],
+      );
+      if (file == null || !mounted) return;
 
-    final result = JadwalService.instance.salinHari(
-      tahunAjaran: _tahunAjaran,
-      semester: _semester,
-      kelas: _kelas,
-      dariHari: _hari,
-      keHari: targetDay,
-    );
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.dilewati == 0
-              ? '${result.tersalin} jadwal disalin ke ${targetDay.label}.'
-              : '${result.tersalin} jadwal disalin; ${result.dilewati} dilewati karena bentrok.',
+      final bytes = await file.readAsBytes();
+      final parsed = JadwalExcelImporter.parse(bytes);
+      if (!mounted) return;
+
+      final imported = await Navigator.push<int>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              PratinjauImporJadwalPage(hasil: parsed, namaFile: file.name),
         ),
-      ),
-    );
+      );
+      if (imported == null || !mounted) return;
+      setState(() {
+        _tahunAjaran = parsed.tahunAjaran;
+        _semester = parsed.semester;
+        _filterHari = null;
+        _filterKelas = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$imported jadwal berhasil diimpor.')),
+      );
+    } on FormatException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Format file tidak sesuai: ${error.message}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('File jadwal gagal dibuka: $error')),
+      );
+    }
   }
 
   Future<void> _hapusJadwal(JadwalPelajaran jadwal) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('Hapus Jadwal?', style: AppTextStyle.headingSmall),
+        title: Text('Hapus jadwal?', style: AppTextStyle.headingSmall),
         content: Text(
-          '${jadwal.mataPelajaran} · ${formatMenit(jadwal.mulaiMenit)} di kelas ${jadwal.kelas}',
+          '${jadwal.mataPelajaran} · ${jadwal.hari.label} · '
+          '${jadwal.tampilanWaktu}',
           style: AppTextStyle.bodyMedium,
         ),
         actions: [
@@ -101,26 +117,43 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
     );
     if (confirmed != true || !mounted) return;
 
-    JadwalService.instance.hapus(jadwal.id);
-    setState(() {});
+    try {
+      await JadwalService.instance.hapus(jadwal.id);
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Jadwal gagal dihapus: $error')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final entries = JadwalService.instance.jadwalKelas(
+    final schedules = JadwalService.instance.semuaJadwal(
       tahunAjaran: _tahunAjaran,
       semester: _semester,
-      kelas: _kelas,
-      hari: _hari,
     );
-    final dayCount = JadwalService.instance
-        .jadwalKelas(
-          tahunAjaran: _tahunAjaran,
-          semester: _semester,
-          kelas: _kelas,
-          hari: _hari,
-        )
-        .length;
+    final classes =
+        schedules
+            .map((item) => item.kelas)
+            .whereType<String>()
+            .where((item) => item.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final filtered = schedules.where((item) {
+      if (_filterHari != null && item.hari != _filterHari) return false;
+      if (_filterKelas != null && item.kelas != _filterKelas) return false;
+      final query = _searchController.text.trim().toLowerCase();
+      return query.isEmpty ||
+          item.mataPelajaran.toLowerCase().contains(query) ||
+          item.guru.toLowerCase().contains(query) ||
+          (item.kodeMapel?.toLowerCase().contains(query) ?? false) ||
+          (item.kelas?.toLowerCase().contains(query) ?? false);
+    }).toList();
+    final days = filtered.map((item) => item.hari).toSet();
+    final subjects = filtered.map((item) => item.mataPelajaran).toSet();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -128,7 +161,7 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
         backgroundColor: AppColors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        titleSpacing: 0,
+        titleSpacing: 20,
         toolbarHeight: 64,
         leading: IconButton(
           icon: const Icon(
@@ -143,10 +176,15 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
           style: AppTextStyle.headingSmall.copyWith(fontSize: 20),
         ),
         actions: [
+          TextButton.icon(
+            onPressed: _pilihFileExcel,
+            icon: const Icon(Icons.upload_file_outlined, size: 18),
+            label: const Text('Impor'),
+          ),
           IconButton(
-            tooltip: 'Salin jadwal hari',
-            onPressed: entries.isEmpty ? null : _salinHari,
-            icon: const Icon(Icons.copy_outlined),
+            tooltip: 'Tambah jadwal',
+            onPressed: _openForm,
+            icon: const Icon(Icons.add_circle_outline),
           ),
           const SizedBox(width: 8),
         ],
@@ -154,9 +192,17 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Atur dan tinjau jadwal pelajaran',
+                  style: AppTextStyle.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
@@ -164,9 +210,11 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                       child: _Selector<String>(
                         label: 'Tahun ajaran',
                         value: _tahunAjaran,
-                        items: JadwalService.tahunAjaranTersedia,
-                        onChanged: (value) =>
-                            setState(() => _tahunAjaran = value!),
+                        items: JadwalService.instance.daftarTahunAjaran,
+                        onChanged: (value) => setState(() {
+                          _tahunAjaran = value!;
+                          _filterKelas = null;
+                        }),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -177,90 +225,145 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                         value: _semester,
                         items: Semester.values,
                         itemLabel: (value) => value.label,
-                        onChanged: (value) =>
-                            setState(() => _semester = value!),
+                        onChanged: (value) => setState(() {
+                          _semester = value!;
+                          _filterKelas = null;
+                        }),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _Selector<String>(
-                  label: 'Kelas',
-                  value: _kelas,
-                  items: JadwalService.daftarKelas,
-                  onChanged: (value) => setState(() => _kelas = value!),
+                Row(
+                  children: [
+                    _Statistic(count: '${filtered.length}', label: 'jadwal'),
+                    const SizedBox(width: 18),
+                    _Statistic(count: '${days.length}', label: 'hari'),
+                    const SizedBox(width: 18),
+                    _Statistic(count: '${subjects.length}', label: 'mapel'),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: HariSekolah.values.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final hari = HariSekolah.values[index];
-                return ChoiceChip(
-                  label: Text(hari.label),
-                  selected: _hari == hari,
-                  onSelected: (_) => setState(() => _hari = hari),
-                  selectedColor: AppColors.primaryLight,
-                  labelStyle: TextStyle(
-                    color: _hari == hari
-                        ? AppColors.primaryDark
-                        : AppColors.textSecondary,
-                    fontWeight: _hari == hari
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                  ),
-                  side: BorderSide.none,
-                  showCheckmark: false,
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${_hari.label} · $dayCount jadwal',
-                    style: AppTextStyle.headingSmall.copyWith(fontSize: 16),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Cari mata pelajaran atau guru',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Hapus pencarian',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    filled: true,
+                    fillColor: AppColors.white,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: _salinHari,
-                  icon: const Icon(Icons.copy_outlined, size: 18),
-                  label: const Text('Salin hari'),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _FilterDropdown<HariSekolah?>(
+                        value: _filterHari,
+                        label: _filterHari?.label ?? 'Semua hari',
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('Semua hari'),
+                          ),
+                          ...HariSekolah.values.map(
+                            (hari) => DropdownMenuItem(
+                              value: hari,
+                              child: Text(hari.label),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _filterHari = value),
+                      ),
+                    ),
+                    if (classes.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _FilterDropdown<String?>(
+                          value: _filterKelas,
+                          label: _filterKelas ?? 'Semua kelas',
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('Semua kelas'),
+                            ),
+                            ...classes.map(
+                              (kelas) => DropdownMenuItem(
+                                value: kelas,
+                                child: Text(kelas),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _filterKelas = value),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    SegmentedButton<_TampilanJadwal>(
+                      showSelectedIcon: false,
+                      segments: const [
+                        ButtonSegment(
+                          value: _TampilanJadwal.daftar,
+                          icon: Icon(Icons.view_agenda_outlined, size: 18),
+                        ),
+                        ButtonSegment(
+                          value: _TampilanJadwal.mingguan,
+                          icon: Icon(
+                            Icons.calendar_view_week_outlined,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                      selected: {_tampilan},
+                      onSelectionChanged: (value) =>
+                          setState(() => _tampilan = value.first),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
           Expanded(
-            child: entries.isEmpty
-                ? _EmptySchedule(hari: _hari, onAdd: () => _openForm())
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
-                    itemCount: entries.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) => _ScheduleCard(
-                      jadwal: entries[index],
-                      onEdit: () => _openForm(jadwal: entries[index]),
-                      onDelete: () => _hapusJadwal(entries[index]),
-                    ),
+            child: filtered.isEmpty
+                ? _EmptySchedule(
+                    hasSchedules: schedules.isNotEmpty,
+                    onImport: _pilihFileExcel,
+                    onAdd: _openForm,
+                  )
+                : _tampilan == _TampilanJadwal.daftar
+                ? _ScheduleList(
+                    schedules: filtered,
+                    onEdit: (jadwal) => _openForm(jadwal: jadwal),
+                    onDelete: _hapusJadwal,
+                  )
+                : _WeeklySchedule(
+                    schedules: filtered,
+                    onEdit: (jadwal) => _openForm(jadwal: jadwal),
+                    onDelete: _hapusJadwal,
                   ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Jadwal'),
       ),
     );
   }
@@ -310,6 +413,164 @@ class _Selector<T> extends StatelessWidget {
   );
 }
 
+class _FilterDropdown<T> extends StatelessWidget {
+  final T value;
+  final String label;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  const _FilterDropdown({
+    required this.value,
+    required this.label,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => InputDecorator(
+    decoration: InputDecoration(
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<T>(
+        value: value,
+        isExpanded: true,
+        onChanged: onChanged,
+        items: items,
+        selectedItemBuilder: (_) => items
+            .map(
+              (item) => Align(
+                alignment: Alignment.centerLeft,
+                child: Text(label, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
+      ),
+    ),
+  );
+}
+
+class _Statistic extends StatelessWidget {
+  final String count;
+  final String label;
+
+  const _Statistic({required this.count, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Text(
+        count,
+        style: AppTextStyle.headingSmall.copyWith(
+          color: AppColors.primaryDark,
+          fontSize: 16,
+        ),
+      ),
+      const SizedBox(width: 4),
+      Text(
+        label,
+        style: AppTextStyle.bodySmall.copyWith(color: AppColors.textSecondary),
+      ),
+    ],
+  );
+}
+
+class _ScheduleList extends StatelessWidget {
+  final List<JadwalPelajaran> schedules;
+  final ValueChanged<JadwalPelajaran> onEdit;
+  final ValueChanged<JadwalPelajaran> onDelete;
+
+  const _ScheduleList({
+    required this.schedules,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+    children: [
+      for (final day in HariSekolah.values)
+        if (schedules.any((item) => item.hari == day)) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(0, 10, 0, 8),
+            child: Text(
+              '${day.label.toUpperCase()} · '
+              '${schedules.where((item) => item.hari == day).length} jadwal',
+              style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+            ),
+          ),
+          ...schedules
+              .where((item) => item.hari == day)
+              .map(
+                (item) => _ScheduleCard(
+                  jadwal: item,
+                  onEdit: () => onEdit(item),
+                  onDelete: () => onDelete(item),
+                ),
+              ),
+        ],
+    ],
+  );
+}
+
+class _WeeklySchedule extends StatelessWidget {
+  final List<JadwalPelajaran> schedules;
+  final ValueChanged<JadwalPelajaran> onEdit;
+  final ValueChanged<JadwalPelajaran> onDelete;
+
+  const _WeeklySchedule({
+    required this.schedules,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final day in HariSekolah.values)
+            if (schedules.any((item) => item.hari == day))
+              SizedBox(
+                width: 270,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                        child: Text(
+                          day.label,
+                          style: AppTextStyle.headingSmall.copyWith(
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      for (final item in schedules.where(
+                        (item) => item.hari == day,
+                      ))
+                        _ScheduleCard(
+                          jadwal: item,
+                          onEdit: () => onEdit(item),
+                          onDelete: () => onDelete(item),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ScheduleCard extends StatelessWidget {
   final JadwalPelajaran jadwal;
   final VoidCallback onEdit;
@@ -323,36 +584,31 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    margin: const EdgeInsets.only(bottom: 9),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     decoration: BoxDecoration(
       color: AppColors.white,
       borderRadius: BorderRadius.circular(14),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x1F000000),
-          blurRadius: 8,
-          offset: Offset(0, 2),
-        ),
-      ],
+      border: Border.all(color: AppColors.border),
     ),
     child: Row(
       children: [
         Container(
-          width: 5,
-          height: 62,
+          width: 4,
+          height: 54,
           decoration: BoxDecoration(
             color: AppColors.primary,
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         SizedBox(
-          width: 80,
+          width: 68,
           child: Text(
-            '${formatMenit(jadwal.mulaiMenit)}\n${formatMenit(jadwal.selesaiMenit)}',
-            style: AppTextStyle.bodyMedium.copyWith(
+            jadwal.tampilanWaktu,
+            style: AppTextStyle.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
-              height: 1.5,
+              color: AppColors.primaryDark,
             ),
           ),
         ),
@@ -363,17 +619,32 @@ class _ScheduleCard extends StatelessWidget {
             children: [
               Text(
                 jadwal.mataPelajaran,
-                style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
               ),
-              const SizedBox(height: 4),
+              if (jadwal.kodeMapel != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Kode ${jadwal.kodeMapel}',
+                  style: AppTextStyle.bodySmall.copyWith(fontSize: 10),
+                ),
+              ],
+              const SizedBox(height: 3),
               Text(
-                '${jadwal.guru} · ${jadwal.ruang}',
-                style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
+                [
+                  jadwal.guru,
+                  if (jadwal.tampilanLokasi.isNotEmpty) jadwal.tampilanLokasi,
+                ].join(' · '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
               ),
             ],
           ),
         ),
         PopupMenuButton<String>(
+          padding: EdgeInsets.zero,
           onSelected: (value) => value == 'edit' ? onEdit() : onDelete(),
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'edit', child: Text('Edit')),
@@ -386,10 +657,15 @@ class _ScheduleCard extends StatelessWidget {
 }
 
 class _EmptySchedule extends StatelessWidget {
-  final HariSekolah hari;
+  final bool hasSchedules;
+  final VoidCallback onImport;
   final VoidCallback onAdd;
 
-  const _EmptySchedule({required this.hari, required this.onAdd});
+  const _EmptySchedule({
+    required this.hasSchedules,
+    required this.onImport,
+    required this.onAdd,
+  });
 
   @override
   Widget build(BuildContext context) => Center(
@@ -405,18 +681,34 @@ class _EmptySchedule extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Belum ada jadwal untuk ${hari.label.toLowerCase()}.',
+            hasSchedules
+                ? 'Tidak ada jadwal yang cocok dengan pencarian atau filter.'
+                : 'Belum ada jadwal untuk periode ini.',
             textAlign: TextAlign.center,
             style: AppTextStyle.bodyLarge.copyWith(
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Tambah pelajaran'),
-          ),
+          if (!hasSchedules) ...[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onImport,
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: const Text('Impor Excel'),
+                ),
+                FilledButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah jadwal'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     ),

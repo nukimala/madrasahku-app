@@ -27,7 +27,6 @@ class _GuruHomePageState extends State<GuruHomePage> {
   int _currentIndex = 0;
 
   static const Color _green = Color(0xFF219653);
-  
 
   final int _tugasPerluDinilai = 2;
 
@@ -37,7 +36,6 @@ class _GuruHomePageState extends State<GuruHomePage> {
       _currentIndex = index;
     });
   }
-
 
   // Membuka halaman jadwal lengkap.
   Future<void> _openJadwal() async {
@@ -192,11 +190,11 @@ class _GuruHomePageState extends State<GuruHomePage> {
             (jadwal) => Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: _JadwalCard(
-                jam:
-                    '${formatMenit(jadwal.mulaiMenit)} - '
-                    '${formatMenit(jadwal.selesaiMenit)}',
+                jam: jadwal.tampilanWaktu,
                 mapel: jadwal.mataPelajaran,
-                kelas: 'Kelas ${jadwal.kelas} · ${jadwal.ruang}',
+                kelas: jadwal.tampilanLokasi.isEmpty
+                    ? 'Kelas/ruang tidak dicantumkan'
+                    : jadwal.tampilanLokasi,
                 status: 'Mengajar',
               ),
             ),

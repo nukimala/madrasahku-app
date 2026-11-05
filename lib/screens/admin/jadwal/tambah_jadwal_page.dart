@@ -8,7 +8,7 @@ import '../../../utilis/app_text_style.dart';
 class TambahJadwalPage extends StatefulWidget {
   final String tahunAjaran;
   final Semester semester;
-  final String kelas;
+  final String? kelas;
   final HariSekolah hari;
   final JadwalPelajaran? jadwal;
 
@@ -30,9 +30,12 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   late HariSekolah _hari;
   late int _mulaiMenit;
   late int _selesaiMenit;
+  late bool _hasClass;
+  String? _kelas;
   String? _mapel;
   String? _guru;
   String? _ruang;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.jadwal != null;
 
@@ -43,6 +46,8 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     _hari = jadwal?.hari ?? widget.hari;
     _mulaiMenit = jadwal?.mulaiMenit ?? 7 * 60;
     _selesaiMenit = jadwal?.selesaiMenit ?? 7 * 60 + 40;
+    _kelas = jadwal?.kelas ?? widget.kelas;
+    _hasClass = _kelas != null;
     _mapel = jadwal?.mataPelajaran;
     _guru = jadwal?.guru;
     _ruang = jadwal?.ruang;
@@ -69,33 +74,44 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     });
   }
 
-  void _simpan() {
+  Future<void> _simpan() async {
     if (!_formKey.currentState!.validate()) return;
 
     final jadwal = JadwalPelajaran(
       id: widget.jadwal?.id ?? 0,
       tahunAjaran: widget.tahunAjaran,
       semester: widget.semester,
-      kelas: widget.kelas,
+      kelas: _hasClass ? _kelas : null,
       hari: _hari,
       mulaiMenit: _mulaiMenit,
       selesaiMenit: _selesaiMenit,
       mataPelajaran: _mapel!,
       guru: _guru!,
-      ruang: _ruang!,
+      ruang: _ruang,
     );
-    final error = JadwalService.instance.simpan(
-      jadwal,
-      kecualiId: widget.jadwal?.id,
-    );
-    if (error != null) {
+    setState(() => _isSaving = true);
+    try {
+      final error = await JadwalService.instance.simpan(
+        jadwal,
+        kecualiId: widget.jadwal?.id,
+      );
+      if (!mounted) return;
+      if (error != null) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(error)));
-      return;
+      ).showSnackBar(SnackBar(content: Text('Jadwal gagal disimpan: $error')));
     }
-
-    Navigator.pop(context, true);
   }
 
   @override
@@ -131,9 +147,25 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FieldLabel('Kelas · ${widget.kelas}'),
-                    _ReadOnlyValue(widget.kelas),
-                    const SizedBox(height: 18),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Jadwal untuk kelas tertentu'),
+                      subtitle: const Text('Kelas boleh dikosongkan'),
+                      value: _hasClass,
+                      onChanged: (value) => setState(() => _hasClass = value),
+                    ),
+                    if (_hasClass) ...[
+                      const _FieldLabel('Kelas'),
+                      _DropdownField<String>(
+                        value: _kelas,
+                        items: {...JadwalService.daftarKelas, ?_kelas}.toList(),
+                        label: (item) => item,
+                        onChanged: (value) => setState(() => _kelas = value),
+                        validator: (value) =>
+                            value == null ? 'Pilih kelas' : null,
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     _FieldLabel(
                       'Periode · ${widget.tahunAjaran} · Semester ${widget.semester.label}',
                     ),
@@ -174,7 +206,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     const _FieldLabel('Mata Pelajaran'),
                     _DropdownField<String>(
                       value: _mapel,
-                      items: JadwalService.daftarMapel,
+                      items: {...JadwalService.daftarMapel, ?_mapel}.toList(),
                       label: (item) => item,
                       onChanged: (value) => setState(() => _mapel = value),
                       validator: (value) =>
@@ -184,20 +216,19 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     const _FieldLabel('Guru'),
                     _DropdownField<String>(
                       value: _guru,
-                      items: JadwalService.daftarGuru,
+                      items: {...JadwalService.daftarGuru, ?_guru}.toList(),
                       label: (item) => item,
                       onChanged: (value) => setState(() => _guru = value),
                       validator: (value) => value == null ? 'Pilih guru' : null,
                     ),
                     const SizedBox(height: 18),
-                    const _FieldLabel('Ruang (wajib)'),
+                    const _FieldLabel('Ruang (opsional)'),
                     _DropdownField<String>(
                       value: _ruang,
-                      items: JadwalService.daftarRuang,
+                      items: {...JadwalService.daftarRuang, ?_ruang}.toList(),
                       label: (item) => item,
                       onChanged: (value) => setState(() => _ruang = value),
-                      validator: (value) =>
-                          value == null ? 'Pilih ruang' : null,
+                      validator: (_) => null,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -215,7 +246,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: _simpan,
+                onPressed: _isSaving ? null : _simpan,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
@@ -223,10 +254,18 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: Text(
-                  _isEditing ? 'Simpan Perubahan' : 'Simpan Jadwal',
-                  style: AppTextStyle.button.copyWith(fontSize: 16),
-                ),
+                child: _isSaving
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          color: AppColors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(
+                        _isEditing ? 'Simpan Perubahan' : 'Simpan Jadwal',
+                        style: AppTextStyle.button.copyWith(fontSize: 16),
+                      ),
               ),
             ),
           ),
@@ -248,23 +287,6 @@ class _FieldLabel extends StatelessWidget {
       text,
       style: AppTextStyle.label.copyWith(fontWeight: FontWeight.w600),
     ),
-  );
-}
-
-class _ReadOnlyValue extends StatelessWidget {
-  final String value;
-
-  const _ReadOnlyValue(this.value);
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF3F4F6),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Text(value, style: AppTextStyle.bodyLarge),
   );
 }
 

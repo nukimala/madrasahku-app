@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aplikasimadrasahku/models/jadwal_model.dart';
@@ -7,6 +8,11 @@ import 'package:aplikasimadrasahku/services/jadwal_service.dart';
 void main() {
   const schoolYear = '2098/2099';
   final service = JadwalService.instance;
+
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await service.load();
+  });
 
   JadwalPelajaran schedule({
     int id = 0,
@@ -29,20 +35,22 @@ void main() {
     ruang: room,
   );
 
-  test('rejects overlapping class, teacher, and room bookings', () {
-    expect(service.simpan(schedule()), isNull);
+  test('rejects overlapping class, teacher, and room bookings', () async {
+    expect(await service.simpan(schedule()), isNull);
     expect(
-      service.simpan(schedule(start: 430, end: 470, teacher: 'Budi Santoso')),
+      await service.simpan(
+        schedule(start: 430, end: 470, teacher: 'Budi Santoso'),
+      ),
       contains('Kelas VII A'),
     );
     expect(
-      service.simpan(
+      await service.simpan(
         schedule(className: 'VII B', start: 430, end: 470, room: 'Ruang 2'),
       ),
       contains('Siti Nurhaliza'),
     );
     expect(
-      service.simpan(
+      await service.simpan(
         schedule(
           className: 'VII C',
           start: 430,
@@ -53,16 +61,16 @@ void main() {
       contains('Ruang 1'),
     );
     expect(
-      service.simpan(
+      await service.simpan(
         schedule(className: 'VII B', start: 460, end: 500, room: 'Ruang 1'),
       ),
       isNull,
     );
-    expect(service.simpan(schedule(start: 500, end: 490)), isNotNull);
+    expect(await service.simpan(schedule(start: 500, end: 490)), isNotNull);
   });
 
-  test('copies a day while skipping conflicting target slots', () {
-    service.simpan(
+  test('copies a day while skipping conflicting target slots', () async {
+    await service.simpan(
       schedule(
         className: 'VIII A',
         day: HariSekolah.rabu,
@@ -72,7 +80,7 @@ void main() {
         room: 'Ruang 3',
       ),
     );
-    service.simpan(
+    await service.simpan(
       schedule(
         className: 'VIII A',
         day: HariSekolah.rabu,
@@ -82,7 +90,7 @@ void main() {
         room: 'Ruang 4',
       ),
     );
-    service.simpan(
+    await service.simpan(
       schedule(
         className: 'VIII B',
         day: HariSekolah.kamis,
@@ -93,7 +101,7 @@ void main() {
       ),
     );
 
-    final result = service.salinHari(
+    final result = await service.salinHari(
       tahunAjaran: schoolYear,
       semester: Semester.ganjil,
       kelas: 'VIII A',
@@ -115,9 +123,74 @@ void main() {
   });
 
   test(
+    'import replaces only its period and allows missing class or room',
+    () async {
+      const importYear = '2096/2097';
+      await service.simpan(
+        JadwalPelajaran(
+          id: 0,
+          tahunAjaran: importYear,
+          semester: Semester.ganjil,
+          kelas: '8A',
+          hari: HariSekolah.senin,
+          mulaiMenit: 420,
+          selesaiMenit: 460,
+          mataPelajaran: 'Jadwal lama',
+          guru: 'Guru Lama',
+          ruang: 'Ruang 1',
+        ),
+      );
+      await service.simpan(
+        JadwalPelajaran(
+          id: 0,
+          tahunAjaran: importYear,
+          semester: Semester.genap,
+          hari: HariSekolah.senin,
+          mulaiMenit: 420,
+          selesaiMenit: 460,
+          mataPelajaran: 'Jadwal semester genap',
+          guru: 'Guru Genap',
+        ),
+      );
+
+      final imported = JadwalPelajaran(
+        id: 0,
+        tahunAjaran: importYear,
+        semester: Semester.ganjil,
+        hari: HariSekolah.selasa,
+        mulaiMenit: null,
+        selesaiMenit: null,
+        jamKe: 'UPC',
+        mataPelajaran: 'Upacara',
+        guru: 'Guru Baru',
+      );
+      expect(
+        await service.gantiJadwal(
+          tahunAjaran: importYear,
+          semester: Semester.ganjil,
+          jadwalBaru: [imported],
+        ),
+        1,
+      );
+
+      final ganjil = service.semuaJadwal(
+        tahunAjaran: importYear,
+        semester: Semester.ganjil,
+      );
+      expect(ganjil, hasLength(1));
+      expect(ganjil.single.kelas, isNull);
+      expect(ganjil.single.ruang, isNull);
+      expect(
+        service.semuaJadwal(tahunAjaran: importYear, semester: Semester.genap),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
     'teacher demo account reads only schedules assigned to its identity',
-    () {
-      service.simpan(
+    () async {
+      await service.simpan(
         schedule(
           className: 'IX A',
           day: HariSekolah.sabtu,
@@ -127,7 +200,7 @@ void main() {
           room: 'Ruang 5',
         ),
       );
-      service.simpan(
+      await service.simpan(
         schedule(
           className: 'IX B',
           day: HariSekolah.sabtu,

@@ -214,7 +214,7 @@ class _TeacherScheduleCard extends StatelessWidget {
         SizedBox(
           width: 80,
           child: Text(
-            '${formatMenit(jadwal.mulaiMenit)}\n${formatMenit(jadwal.selesaiMenit)}',
+            jadwal.tampilanWaktu,
             style: AppTextStyle.bodyMedium.copyWith(
               fontWeight: FontWeight.w600,
               height: 1.5,
@@ -227,12 +227,17 @@ class _TeacherScheduleCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${jadwal.kelas} · ${jadwal.mataPelajaran}',
+                [
+                  if (jadwal.kelas != null) 'Kelas ${jadwal.kelas}',
+                  jadwal.mataPelajaran,
+                ].join(' · '),
                 style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
               ),
               const SizedBox(height: 4),
               Text(
-                jadwal.ruang,
+                jadwal.tampilanLokasi.isEmpty
+                    ? 'Ruang tidak dicantumkan'
+                    : jadwal.tampilanLokasi,
                 style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
               ),
             ],
