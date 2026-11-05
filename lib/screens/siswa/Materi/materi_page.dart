@@ -60,7 +60,7 @@ class _MateriPageState extends State<MateriPage> {
 
   String _selectedMapel = 'Matematika';
   String _query = '';
-  final Set<int> _expanded = {0};
+  final Set<int> _expanded = {};
 
   List<_Topik> get _topikList {
     final all = _data[_selectedMapel] ?? const <_Topik>[];
@@ -200,9 +200,7 @@ class _MateriPageState extends State<MateriPage> {
                             if (v == null) return;
                             setState(() {
                               _selectedMapel = v;
-                              _expanded
-                                ..clear()
-                                ..add(0);
+                              _expanded.clear();
                             });
                           },
                         ),
