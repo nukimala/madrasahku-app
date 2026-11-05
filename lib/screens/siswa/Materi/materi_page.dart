@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'detail_materi_page.dart';
+import '../tugas/upload_tugas_page.dart';
+import '../siswa_bottom_nav.dart';
 import '../siswa_home_page.dart';
-import '../tugas/tugas_page.dart';
-import '../profile/profil_siswa_page.dart';
 
 class MateriPage extends StatefulWidget {
   const MateriPage({super.key});
@@ -15,43 +15,100 @@ class MateriPage extends StatefulWidget {
 }
 
 class _MateriPageState extends State<MateriPage> {
-  static const _semuaMapel = 'Semua Mata Pelajaran';
+  static const _kelas = 'Kelas VIII A';
 
-  final _kelasList = const ['Kelas VIII A', 'Kelas VIII B', 'Kelas VIII C'];
-
-  final _materiList = const [
-    _Materi('Matematika', 'Bab 3 - Persamaan Linear', 'PDF 2.5 MB'),
-    _Materi('Al-Quran Hadis', 'Bab 3 - Hafalan Surat', 'PPT 2.5 MB'),
-    _Materi('Bahasa Arab', 'Bab 3 - Kosa Kata', 'PDF 2.5 MB'),
-    _Materi('Akidah Akhlak', 'Bab 3 - Adab Zakat', 'PPT 2.5 MB'),
-    _Materi('Fikih', 'Bab 3 - Ketentuan Zakat', 'PDF 2.5 MB'),
-    _Materi('IPA', 'Bab 1 - Fotosintesis', 'Gambar 2.5 MB'),
+  // Daftar mata pelajaran (sesuai kode bidang studi)
+  static const _mapelList = [
+    'Matematika',
+    "Qur'an Hadits",
+    'Akidah Akhlaq',
+    'Fiqih',
+    'SKI',
+    'Bahasa Arab',
+    'PPKn',
+    'Bhs. Indonesia',
+    'IPS Terpadu',
+    'IPA Terpadu',
+    'Bahasa Inggris',
+    'Penjaskes',
+    'SBK/Prakarya',
+    'Bahasa Jawa',
+    'TIK',
   ];
 
-  String _selectedKelas = 'Kelas VIII A';
-  String _selectedMapel = _semuaMapel;
+  // Data dummy per mata pelajaran (sementara hanya Matematika)
+  final Map<String, List<_Topik>> _data = {
+    'Matematika': [
+      _Topik('Minggu 1 - Bilangan Bulat', [
+        _Item('Bilangan Bulat', 'Silahkan dipelajari materi berikut',
+            _Status.selesai),
+        _Item('Bilangan Bulat', 'Deadline: 11 Desember 2026, 23.59',
+            _Status.sisa,
+            isTugas: true, badge: 'Sisa 7 Hari'),
+      ]),
+      _Topik('Minggu 2 - Operasi Hitung', [
+        _Item('Operasi Hitung', 'Silahkan dipelajari materi berikut',
+            _Status.lanjutkan),
+        _Item('Operasi Hitung', '', _Status.selesai, isTugas: true),
+      ]),
+      _Topik('Minggu 3 - FPB dan KPK', []),
+      _Topik('Minggu 4 - Desimal', []),
+      _Topik('Minggu 5 - Bangun Datar', []),
+      _Topik('Minggu 6 - Bangun Ruang', []),
+    ],
+  };
+
+  String _selectedMapel = 'Matematika';
   String _query = '';
+  final Set<int> _expanded = {0};
 
-  List<String> get _mapelList => [
-        _semuaMapel,
-        ..._materiList.map((m) => m.subject),
-      ];
-
-  List<_Materi> get _filteredMateri {
+  List<_Topik> get _topikList {
+    final all = _data[_selectedMapel] ?? const <_Topik>[];
     final q = _query.trim().toLowerCase();
-    return _materiList.where((m) {
-      final cocokMapel =
-          _selectedMapel == _semuaMapel || m.subject == _selectedMapel;
-      final cocokCari = q.isEmpty ||
-          m.subject.toLowerCase().contains(q) ||
-          m.title.toLowerCase().contains(q);
-      return cocokMapel && cocokCari;
-    }).toList();
+    if (q.isEmpty) return all;
+    return all
+        .where((t) =>
+            t.title.toLowerCase().contains(q) ||
+            t.items.any((i) => i.title.toLowerCase().contains(q)))
+        .toList();
+  }
+
+  Future<void> _openDetail(_Topik topik, _Item item) async {
+    final selesai = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DetailMateriPage(
+          judul: topik.title,
+          mapel: _selectedMapel,
+          kelas: _kelas,
+        ),
+      ),
+    );
+    if (selesai == true && !item.isTugas) {
+      setState(() => item.status = _Status.selesai);
+    }
+  }
+
+  void _openUploadTugas(_Item item) {
+    final deadline = item.subtitle.startsWith('Deadline: ')
+        ? item.subtitle.replaceFirst('Deadline: ', '')
+        : 'Belum ditentukan';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UploadTugasPage(
+          title: item.title,
+          subject: _selectedMapel,
+          deadline: deadline,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = _filteredMateri;
+    final topikList = _topikList;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -71,36 +128,85 @@ class _MateriPageState extends State<MateriPage> {
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  Text(
-                    'Materi Pembelajaran',
-                    style: AppTextStyle.headingSmall,
-                  ),
+                  Text('Materi Pembelajaran',
+                      style: AppTextStyle.headingSmall),
                 ],
               ),
             ),
 
             const SizedBox(height: 8),
 
-            // Filter kelas & mata pelajaran
+            // Pencarian + filter mata pelajaran
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
                   Expanded(
-                    flex: 5,
-                    child: _FilterDropdown(
-                      value: _selectedKelas,
-                      items: _kelasList,
-                      onChanged: (v) => setState(() => _selectedKelas = v),
+                    flex: 6,
+                    child: Container(
+                      height: 38,
+                      decoration: _boxDecoration(),
+                      child: TextField(
+                        onChanged: (v) => setState(() => _query = v),
+                        style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
+                        decoration: InputDecoration(
+                          hintText: 'Cari Materi....',
+                          hintStyle: AppTextStyle.bodySmall.copyWith(
+                            fontSize: 12,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            size: 22,
+                            color: AppColors.textPrimary,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 9),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    flex: 6,
-                    child: _FilterDropdown(
-                      value: _selectedMapel,
-                      items: _mapelList.toSet().toList(),
-                      onChanged: (v) => setState(() => _selectedMapel = v),
+                    flex: 4,
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: _boxDecoration(),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedMapel,
+                          isExpanded: true,
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.textPrimary,
+                          ),
+                          dropdownColor: AppColors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          style: AppTextStyle.bodySmall.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          items: _mapelList
+                              .map((m) => DropdownMenuItem(
+                                    value: m,
+                                    child: Text(m,
+                                        overflow: TextOverflow.ellipsis),
+                                  ))
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setState(() {
+                              _selectedMapel = v;
+                              _expanded
+                                ..clear()
+                                ..add(0);
+                            });
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -109,76 +215,32 @@ class _MateriPageState extends State<MateriPage> {
 
             const SizedBox(height: 14),
 
-            // Pencarian
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
-                  decoration: InputDecoration(
-                    hintText: 'Cari Materi....',
-                    hintStyle: AppTextStyle.bodySmall.copyWith(
-                      fontSize: 12,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 22,
-                      color: AppColors.textPrimary,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 9),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Daftar materi
+            // Daftar topik (accordion)
             Expanded(
-              child: data.isEmpty
+              child: topikList.isEmpty
                   ? Center(
                       child: Text(
-                        'Materi tidak ditemukan',
+                        _query.isEmpty
+                            ? 'Belum ada materi'
+                            : 'Materi tidak ditemukan',
                         style: AppTextStyle.bodySmall,
                       ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
+                      itemCount: topikList.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final materi = data[index];
-                        return _MateriCard(
-                          materi: materi,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DetailMateriPage(
-                                judul: materi.title.split(' - ').last,
-                                mapel: materi.subject,
-                                kelas: _selectedKelas,
-                              ),
-                            ),
-                          ),
-                          onDownload: () => _showComingSoon(
-                            context,
-                            'Unduh ${materi.subject}',
-                          ),
+                        final topik = topikList[index];
+                        final open = _expanded.contains(index);
+                        return _TopikCard(
+                          topik: topik,
+                          expanded: open,
+                          onToggle: () => setState(() {
+                            open ? _expanded.remove(index) : _expanded.add(index);
+                          }),
+                          onItemTap: (item) => _openDetail(topik, item),
+                          onKumpulkan: (item) => _openUploadTugas(item),
                         );
                       },
                     ),
@@ -186,95 +248,11 @@ class _MateriPageState extends State<MateriPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.white,
-        selectedItemColor: const Color(0xFF219653),
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        onTap: (index) {
-          if (index == 1) return; // sudah di Materi
-          if (index == 0) {
-            _goHome(context);
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const TugasPage()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note_rounded),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      bottomNavigationBar: const SiswaBottomNav(currentIndex: 1),
     );
   }
 
-  static void _goHome(BuildContext context) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SiswaHomePage()),
-      (route) => false,
-    );
-  }
-
-  static void _showComingSoon(BuildContext context, String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-}
-
-class _Materi {
-  final String subject;
-  final String title;
-  final String fileInfo;
-
-  const _Materi(this.subject, this.title, this.fileInfo);
-}
-
-class _FilterDropdown extends StatelessWidget {
-  final String value;
-  final List<String> items;
-  final ValueChanged<String> onChanged;
-
-  const _FilterDropdown({
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
+  static BoxDecoration _boxDecoration() => BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(8),
         boxShadow: const [
@@ -284,106 +262,246 @@ class _FilterDropdown extends StatelessWidget {
             offset: Offset(0, 2),
           ),
         ],
+      );
+
+  static void _goHome(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const SiswaHomePage()),
+      (route) => false,
+    );
+  }
+
+}
+
+enum _Status { selesai, lanjutkan, sisa }
+
+class _Topik {
+  final String title;
+  final List<_Item> items;
+  _Topik(this.title, this.items);
+}
+
+class _Item {
+  final String title;
+  final String subtitle;
+  final bool isTugas;
+  final String? badge;
+  _Status status;
+
+  _Item(this.title, this.subtitle, this.status,
+      {this.isTugas = false, this.badge});
+}
+
+class _TopikCard extends StatelessWidget {
+  final _Topik topik;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final ValueChanged<_Item> onItemTap;
+  final ValueChanged<_Item> onKumpulkan;
+
+  const _TopikCard({
+    required this.topik,
+    required this.expanded,
+    required this.onToggle,
+    required this.onItemTap,
+    required this.onKumpulkan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1EDED),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.textPrimary,
+      child: Column(
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Topik',
+                          style: AppTextStyle.bodySmall.copyWith(
+                            fontSize: 10,
+                            color: const Color(0xFF6B7280),
+                          ),
+                        ),
+                        Text(
+                          topik.title,
+                          style:
+                              AppTextStyle.headingSmall.copyWith(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                ],
+              ),
+            ),
           ),
-          dropdownColor: AppColors.white,
-          borderRadius: BorderRadius.circular(8),
-          style: AppTextStyle.bodySmall.copyWith(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-          items: items
-              .map(
-                (item) => DropdownMenuItem<String>(
-                  value: item,
-                  child: Text(item, overflow: TextOverflow.ellipsis),
+          if (expanded && topik.items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              )
-              .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-        ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < topik.items.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 6),
+                      _ItemTile(
+                        item: topik.items[i],
+                        onTap: () => onItemTap(topik.items[i]),
+                        onKumpulkan: () => onKumpulkan(topik.items[i]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-class _MateriCard extends StatelessWidget {
-  final _Materi materi;
+class _ItemTile extends StatelessWidget {
+  final _Item item;
   final VoidCallback onTap;
-  final VoidCallback onDownload;
+  final VoidCallback onKumpulkan;
 
-  const _MateriCard({
-    required this.materi,
+  const _ItemTile({
+    required this.item,
     required this.onTap,
-    required this.onDownload,
+    required this.onKumpulkan,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.white,
-      elevation: 4,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.description,
-                size: 32,
-                color: Color(0xFF219653),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+    return InkWell(
+      onTap: item.isTugas ? onKumpulkan : onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.description,
+              size: 28,
+              color: item.isTugas
+                  ? const Color(0xFF4F8EF7)
+                  : const Color(0xFF219653),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
+                  ),
+                  if (item.subtitle.isNotEmpty)
                     Text(
-                      materi.subject,
-                      style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      materi.title,
+                      item.subtitle,
                       style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 10,
+                        fontSize: 8,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    Text(
-                      materi.fileInfo,
-                      style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 10,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
-              IconButton(
-                onPressed: onDownload,
-                icon: const Icon(
-                  Icons.download_rounded,
-                  size: 24,
-                  color: Color(0xFF219653),
-                ),
+            ),
+            _statusWidget(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusWidget() {
+    switch (item.status) {
+      case _Status.selesai:
+        return const _Chip(
+          'Selesai',
+          bg: Color(0xFFD1F2DC),
+          fg: Color(0xFF219653),
+        );
+      case _Status.lanjutkan:
+        return const _Chip(
+          'Lanjutkan',
+          bg: Color(0xFF219653),
+          fg: Colors.white,
+        );
+      case _Status.sisa:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _Chip(
+              item.badge ?? 'Sisa waktu',
+              bg: const Color(0xFFFAD4D4),
+              fg: const Color(0xFFD32F2F),
+            ),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: onKumpulkan,
+              child: const _Chip(
+                'Kumpulkan Tugas',
+                bg: Color(0xFF219653),
+                fg: Colors.white,
               ),
-            ],
-          ),
+            ),
+          ],
+        );
+    }
+  }
+}
+
+class _Chip extends StatelessWidget {
+  final String label;
+  final Color bg;
+  final Color fg;
+
+  const _Chip(this.label, {required this.bg, required this.fg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w600,
+          color: fg,
         ),
       ),
     );

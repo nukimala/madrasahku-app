@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
-import '../Materi/materi_page.dart';
+import '../siswa_bottom_nav.dart';
 import '../siswa_home_page.dart';
-import '../profile/profil_siswa_page.dart';
 import 'upload_tugas_page.dart';
 
 enum TugasStatus { aktif, dikumpulkan, selesai }
@@ -37,8 +36,6 @@ class TugasPage extends StatefulWidget {
 }
 
 class _TugasPageState extends State<TugasPage> {
-  static const Color _green = Color(0xFF219653);
-
   // Data dummy (nanti bisa diganti dari API / database)
   static const List<_TugasItem> _allTugas = [
     _TugasItem(
@@ -247,48 +244,9 @@ class _TugasPageState extends State<TugasPage> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.white,
-        selectedItemColor: _green,
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        onTap: (index) {
-          if (index == 2) return; // sudah di Tugas
-          if (index == 0) {
-            _goHome();
-          } else if (index == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MateriPage()),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note_rounded),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-      ),
+
+      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
+      bottomNavigationBar: const SiswaBottomNav(currentIndex: 2),
     );
   }
 }

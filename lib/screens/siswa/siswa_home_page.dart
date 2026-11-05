@@ -4,9 +4,9 @@ import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
 import 'Materi/materi_page.dart';
+import 'siswa_bottom_nav.dart';
 import 'tugas/tugas_page.dart';
 import 'tugas/upload_tugas_page.dart';
-import 'profile/profil_siswa_page.dart';
 
 class SiswaHomePage extends StatelessWidget {
   const SiswaHomePage({super.key});
@@ -187,51 +187,11 @@ class SiswaHomePage extends StatelessWidget {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.white,
-        selectedItemColor: const Color(0xFF219653),
-        unselectedItemColor: const Color(0xFFD1D5DB),
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const MateriPage()));
-          } else if (index == 2) {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const TugasPage()));
-          } else if (index == 3) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfilSiswaPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded, size: 28),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined, size: 28),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note_rounded, size: 28),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline, size: 28),
-            label: 'Profile',
-          ),
-        ],
-      ),
+
+      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
+      bottomNavigationBar: const SiswaBottomNav(currentIndex: 0),
     );
   }
-
 }
 
 class _ActivityCard extends StatelessWidget {
