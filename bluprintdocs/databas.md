@@ -50,11 +50,53 @@ Dengan batasan kebutuhan yang Anda jelaskan, struktur tabelnya jadi jauh lebih r
 
 #### 📌 Modul 1: Pengguna & Master Data (Dikelola Penuh oleh Admin)
 1. **`users`**: Akun login (Admin, Guru, Siswa).
-   - `id`, `username`, `password` (hash), `role` (`admin`/`guru`/`siswa`).
+   - CREATE DATABASE IF NOT EXISTS madrasahku
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE madrasahku;
+
+CREATE TABLE Pengguna (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) NULL UNIQUE,
+    role ENUM('admin', 'teacher', 'student')
+        NOT NULL DEFAULT 'student',
+    account_status ENUM('active', 'inactive')
+        NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+);
 2. **`gurus`**: Data pendidik.
-   - `id`, `user_id` (FK), `nip`, `nama`, `no_hp`.
+   - CREATE TABLE guru ( 
+    id_guru INT AUTO_INCREMENT PRIMARY KEY, 
+    nama_lengkap VARCHAR(100) NOT NULL, 
+    nip_nuptk VARCHAR(30) DEFAULT NULL, 
+    mata_pelajaran VARCHAR(100) NOT NULL, 
+    email VARCHAR(100) NOT NULL, 
+    no_telepon VARCHAR(20), 
+    foto VARCHAR(255) DEFAULT NULL, 
+    status ENUM('Aktif', 'Nonaktif') DEFAULT 'Aktif', 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+        ON UPDATE CURRENT_TIMESTAMP 
+);
 3. **`siswas`**: Data murid.
-   - `id`, `user_id` (FK), `kelas_id` (FK), `nisn`, `nama`, `alamat`, `nama_wali`.
+   - CREATE TABLE siswa ( 
+    id_siswa INT AUTO_INCREMENT PRIMARY KEY, 
+    nama_lengkap VARCHAR(100) NOT NULL, 
+    nis VARCHAR(30) NOT NULL UNIQUE, 
+    id_kelas INT, 
+    jenis_kelamin ENUM('Laki-laki', 'Perempuan') NOT NULL, 
+    tanggal_lahir DATE, 
+    foto VARCHAR(255) DEFAULT NULL, 
+    status ENUM('Aktif', 'Nonaktif') DEFAULT 'Aktif', 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+        ON UPDATE CURRENT_TIMESTAMP 
+); 
 4. **`classes` (Kelas)**:
    - `id`, `nama_kelas` (VII A, VII B, dst.), `wali_kelas_id` (FK ke guru).
 5. **`subjects` (Mata Pelajaran)**:

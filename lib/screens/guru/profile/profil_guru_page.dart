@@ -314,7 +314,7 @@ Future<void> _editProfil() async {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+     
     );
   }
 

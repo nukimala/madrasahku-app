@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 import '../../models/jadwal_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/jadwal_service.dart';
+import '../../services/presensi_service.dart';
+
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
+
+import '../../widgets/guru_bottom_nav.dart';
 
 import 'jadwal/jadwal_guru_page.dart';
 import 'materi/materi_guru_page.dart';
 import 'tugas/tugas_guru_page.dart';
+import 'profile/profil_guru_page.dart';
+import 'presensi/presensi_scan_page.dart';
 
 class GuruHomePage extends StatefulWidget {
   const GuruHomePage({super.key});
@@ -21,9 +27,16 @@ class _GuruHomePageState extends State<GuruHomePage> {
   int _currentIndex = 0;
 
   static const Color _green = Color(0xFF219653);
+  static const Color _blue = Color(0xFF60A5FA);
 
-  // Jumlah tugas yang perlu dinilai .
   final int _tugasPerluDinilai = 2;
+
+  // Mengganti halaman melalui navbar.
+  void _changePage(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   void _showComingSoon(String menu) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -34,32 +47,56 @@ class _GuruHomePageState extends State<GuruHomePage> {
     );
   }
 
-  void _openMateri() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const MateriGuruPage()),
-    );
-  }
-
-  void _openTugas() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const TugasGuruPage()),
-    );
-  }
-
+  // Membuka halaman jadwal lengkap.
   Future<void> _openJadwal() async {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(builder: (_) => const JadwalGuruPage()),
     );
-    if (mounted) setState(() {});
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // Membuka halaman scan presensi.
+  Future<void> _openPresensi() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const PresensiScanPage()),
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  // Format jam presensi.
+  String _jam(DateTime? waktu) {
+    if (waktu == null) return '--.--';
+
+    return '${waktu.hour.toString().padLeft(2, '0')}.'
+        '${waktu.minute.toString().padLeft(2, '0')}';
+  }
+
+  // Mengambil status presensi guru hari ini.
+  String _teksStatusPresensi() {
+    final guru = AuthService.instance.currentTeacherName ?? '';
+
+    final presensi = PresensiService.instance.hariIni(guru);
+
+    if (presensi == null || presensi.logs.isEmpty) {
+      return 'Belum presensi';
+    }
+
+    return 'Datang ${_jam(presensi.jamDatang)} · '
+        'Pulang ${_jam(presensi.jamPulang)}';
   }
 
   @override
   Widget build(BuildContext context) {
-    // Jadwal guru yang login pada hari ini
     final todayIndex = DateTime.now().weekday - 1;
+
     final todaySchedules =
         todayIndex >= 0 && todayIndex < HariSekolah.values.length
         ? JadwalService.instance.jadwalGuru(
@@ -70,82 +107,117 @@ class _GuruHomePageState extends State<GuruHomePage> {
           )
         : <JadwalPelajaran>[];
 
+    // Semua halaman navbar berada dalam satu IndexedStack.
+    final pages = [
+      _buildHomeContent(todaySchedules),
+      const MateriGuruPage(),
+      const TugasGuruPage(),
+      const ProfilGuruPage(),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
+
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: IndexedStack(index: _currentIndex, children: pages),
+      ),
+
+      bottomNavigationBar: GuruBottomNav(
+        currentIndex: _currentIndex,
+        onTap: _changePage,
+      ),
+    );
+  }
+
+  // =====================================================
+  // HALAMAN HOME
+  // =====================================================
+
+  Widget _buildHomeContent(List<JadwalPelajaran> todaySchedules) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+
+          const SizedBox(height: 20),
+
+          _buildPresensiCard(),
+
+          const SizedBox(height: 22),
+
+          // Aktivitas mengajar.
+          Text(
+            'Aktivitas Mengajar',
+            style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+          ),
+
+          const SizedBox(height: 12),
+
+          _buildAktivitas(jumlahJadwal: todaySchedules.length),
+
+          const SizedBox(height: 24),
+
+          // Jadwal pelajaran hari ini.
+          Row(
             children: [
-              _buildHeader(),
-              const SizedBox(height: 20),
-              _buildPresensiCard(),
-              const SizedBox(height: 22),
-
-              // Aktivitas mengajar
-              Text(
-                'Aktivitas Mengajar',
-                style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              _buildAktivitas(jumlahJadwal: todaySchedules.length),
-              const SizedBox(height: 24),
-
-              // Jadwal pelajaran hari ini
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Jadwal Pelajaran',
-                      style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _openJadwal,
-                    child: const Text(
-                      'Lihat semua',
-                      style: TextStyle(
-                        color: _green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (todaySchedules.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Belum ada jadwal mengajar hari ini.',
-                    style: AppTextStyle.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
+              Expanded(
+                child: Text(
+                  'Jadwal Pelajaran',
+                  style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
                 ),
-              ...todaySchedules.map(
-                (jadwal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _JadwalCard(
-                    jam:
-                        '${formatMenit(jadwal.mulaiMenit)} - ${formatMenit(jadwal.selesaiMenit)}',
-                    mapel: jadwal.mataPelajaran,
-                    kelas: 'Kelas ${jadwal.kelas} · ${jadwal.ruang}',
-                    status: 'Mengajar',
+              ),
+
+              GestureDetector(
+                onTap: _openJadwal,
+                child: const Text(
+                  'Lihat semua',
+                  style: TextStyle(
+                    color: _green,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-        ),
+
+          const SizedBox(height: 12),
+
+          if (todaySchedules.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Belum ada jadwal mengajar hari ini.',
+                style: AppTextStyle.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+
+          ...todaySchedules.map(
+            (jadwal) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _JadwalCard(
+                jam:
+                    '${formatMenit(jadwal.mulaiMenit)} - '
+                    '${formatMenit(jadwal.selesaiMenit)}',
+                mapel: jadwal.mataPelajaran,
+                kelas: 'Kelas ${jadwal.kelas} · ${jadwal.ruang}',
+                status: 'Mengajar',
+              ),
+            ),
+          ),
+        ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  // Header guru
+  // =====================================================
+  // HEADER GURU
+  // =====================================================
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -157,7 +229,9 @@ class _GuruHomePageState extends State<GuruHomePage> {
             shape: BoxShape.circle,
           ),
         ),
+
         const SizedBox(width: 14),
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,10 +240,12 @@ class _GuruHomePageState extends State<GuruHomePage> {
                 'Assalamu’alaikum,',
                 style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
               ),
+
               Text(
                 AuthService.instance.currentTeacherName ?? 'Guru',
                 style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
               ),
+
               Text(
                 'Guru',
                 style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
@@ -181,7 +257,10 @@ class _GuruHomePageState extends State<GuruHomePage> {
     );
   }
 
-  // Kartu presensi hari ini
+  // =====================================================
+  // KARTU PRESENSI
+  // =====================================================
+
   Widget _buildPresensiCard() {
     return Container(
       width: double.infinity,
@@ -195,9 +274,10 @@ class _GuruHomePageState extends State<GuruHomePage> {
         ),
         borderRadius: BorderRadius.circular(14),
       ),
+
       child: Stack(
         children: [
-          // Gambar masjid sebagai background
+          // Gambar masjid sebagai background.
           Positioned(
             left: 0,
             right: 0,
@@ -210,7 +290,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
             ),
           ),
 
-          // Judul & jam
+          // Judul dan status presensi.
           Positioned(
             left: 16,
             top: 16,
@@ -224,9 +304,11 @@ class _GuruHomePageState extends State<GuruHomePage> {
                     fontSize: 15,
                   ),
                 ),
+
                 const SizedBox(height: 4),
+
                 Text(
-                  '07.00 - 14.00',
+                  _teksStatusPresensi(),
                   style: AppTextStyle.bodySmall.copyWith(
                     color: AppColors.white,
                     fontSize: 12,
@@ -237,7 +319,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
             ),
           ),
 
-          // Badge Aktif
+          // Badge aktif.
           Positioned(
             right: 12,
             top: 14,
@@ -258,7 +340,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
             ),
           ),
 
-          // Tombol Mulai Presensi
+          // Tombol mulai presensi.
           Positioned(
             left: 16,
             right: 16,
@@ -268,14 +350,16 @@ class _GuruHomePageState extends State<GuruHomePage> {
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
-                onTap: () => _showComingSoon('Mulai Presensi'),
+                onTap: _openPresensi,
                 child: const SizedBox(
                   height: 48,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.photo_camera, size: 18, color: Colors.orange),
+
                       SizedBox(width: 8),
+
                       Text(
                         'Mulai Presensi',
                         style: TextStyle(
@@ -295,7 +379,10 @@ class _GuruHomePageState extends State<GuruHomePage> {
     );
   }
 
-  //jumlah jadwal hari ini & tugas perlu dinilai
+  // =====================================================
+  // AKTIVITAS MENGAJAR
+  // =====================================================
+
   Widget _buildAktivitas({required int jumlahJadwal}) {
     return Row(
       children: [
@@ -307,76 +394,26 @@ class _GuruHomePageState extends State<GuruHomePage> {
             onTap: _openJadwal,
           ),
         ),
+
         const SizedBox(width: 16),
+
         Expanded(
           child: _AktivitasCard(
             icon: Icons.assignment_turned_in_outlined,
             jumlah: '$_tugasPerluDinilai',
             label: 'Tugas Perlu Dinilai',
-            onTap: _openTugas,
+            onTap: () => _changePage(2),
           ),
         ),
       ],
     );
   }
-
-  // Bottom navigation
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        selectedItemColor: _green,
-        unselectedItemColor: const Color(0xFF9CA3AF),
-        selectedFontSize: 11,
-        unselectedFontSize: 11,
-        onTap: (index) {
-          if (index == 0) {
-            setState(() => _currentIndex = 0);
-          } else if (index == 1) {
-            _openMateri();
-          } else if (index == 2) {
-            _openTugas();
-          } else {
-            _showComingSoon('Profil');
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment_outlined),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            label: 'Profil',
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// Kartu ringkasan aktivitas 
+// =========================================================
+// WIDGET KARTU AKTIVITAS
+// =========================================================
+
 class _AktivitasCard extends StatelessWidget {
   final IconData icon;
   final String jumlah;
@@ -411,11 +448,13 @@ class _AktivitasCard extends StatelessWidget {
               ),
             ],
           ),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, size: 30, color: const Color(0xFF219653)),
+
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -423,7 +462,9 @@ class _AktivitasCard extends StatelessWidget {
                     jumlah,
                     style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
                   ),
+
                   const SizedBox(height: 2),
+
                   Text(
                     label,
                     maxLines: 1,
@@ -443,6 +484,10 @@ class _AktivitasCard extends StatelessWidget {
     );
   }
 }
+
+// =========================================================
+// WIDGET KARTU JADWAL
+// =========================================================
 
 class _JadwalCard extends StatelessWidget {
   final String jam;
@@ -473,22 +518,29 @@ class _JadwalCard extends StatelessWidget {
           ),
         ],
       ),
+
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Icon(Icons.description, size: 32, color: Color(0xFF219653)),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(jam, style: AppTextStyle.bodySmall.copyWith(fontSize: 11)),
+
                 const SizedBox(height: 2),
+
                 Text(
                   mapel,
                   style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
                 ),
+
                 const SizedBox(height: 2),
+
                 Text(
                   kelas,
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
@@ -496,6 +548,7 @@ class _JadwalCard extends StatelessWidget {
               ],
             ),
           ),
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(

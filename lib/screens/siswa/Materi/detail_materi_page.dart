@@ -4,24 +4,20 @@ import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
 class DetailMateriPage extends StatefulWidget {
+  /// Judul materi, contoh: "Minggu 1 - Persamaan Linear"
   final String judul;
   final String mapel;
   final String kelas;
-  final String guru;
-  final String deskripsi;
-  final String fileInfo;
-
+  final int totalHalaman;
+  final int halamanAwal;
 
   const DetailMateriPage({
     super.key,
-    this.judul = 'Fotosintesis',
-    this.mapel = 'IPA',
+    this.judul = 'Minggu 1 - Persamaan Linear',
+    this.mapel = 'Matematika',
     this.kelas = 'Kelas VIII A',
-    this.guru = 'Budi Santoso',
-    this.deskripsi =
-        'Materi ini menjelaskan proses fotosintesis pada tumbuhan beserta '
-            'tahapan dan contoh dalam kehidupan sehari-hari',
-    this.fileInfo = 'PDF 2.5 MB',
+    this.totalHalaman = 12,
+    this.halamanAwal = 1,
   });
 
   @override
@@ -31,219 +27,27 @@ class DetailMateriPage extends StatefulWidget {
 class _DetailMateriPageState extends State<DetailMateriPage> {
   static const _green = Color(0xFF219653);
 
-  // 0 = Deskripsi, 1 = File
-  int _tabIndex = 0;
+  late int _halaman = widget.halamanAwal.clamp(1, widget.totalHalaman);
+  bool _selesai = false;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        InkWell(
-                          onTap: () => Navigator.maybePop(context),
-                          borderRadius: BorderRadius.circular(20),
-                          child: const Padding(
-                            padding: EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.arrow_back,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Materi Pembelajaran',
-                          style: AppTextStyle.headingSmall.copyWith(
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Preview video
-                    GestureDetector(
-                      onTap: () => _showComingSoon(context, 'Pemutar video'),
-                      child: Container(
-                        width: double.infinity,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5E5E5),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.textPrimary,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.play_arrow_outlined,
-                              size: 32,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Info materi
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.only(top: 1),
-                          child: Icon(
-                            Icons.play_circle_fill_rounded,
-                            size: 18,
-                            color: _green,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                widget.judul,
-                                style: AppTextStyle.headingSmall.copyWith(
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                '${widget.mapel} - ${widget.kelas}',
-                                style: AppTextStyle.headingSmall.copyWith(
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                'Guru: ${widget.guru}',
-                                style: AppTextStyle.headingSmall.copyWith(
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Tab Deskripsi / File
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _TabButton(
-                            label: 'Deskripsi',
-                            selected: _tabIndex == 0,
-                            onTap: () => setState(() => _tabIndex = 0),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _TabButton(
-                            label: 'File',
-                            selected: _tabIndex == 1,
-                            onTap: () => setState(() => _tabIndex = 1),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    if (_tabIndex == 0) ...[
-                      Text(
-                        widget.deskripsi,
-                        style: AppTextStyle.bodySmall.copyWith(
-                          fontSize: 11,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      _FileCard(
-                        icon: Icons.description,
-                        title: 'Video Pembelajaran',
-                        info: '8:12 MP4 - 25MB',
-                        onTap: () => _showComingSoon(context, 'Video'),
-                      ),
-                    ] else ...[
-                      _FileCard(
-                        icon: Icons.description,
-                        title: 'Video Pembelajaran',
-                        info: '8:12 MP4 - 25MB',
-                        showDownload: true,
-                        onTap: () => _showComingSoon(context, 'Unduh video'),
-                      ),
-                      const SizedBox(height: 12),
-                      _FileCard(
-                        icon: Icons.description,
-                        title: 'Modul ${widget.mapel}',
-                        info: widget.fileInfo,
-                        showDownload: true,
-                        onTap: () => _showComingSoon(context, 'Unduh modul'),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-
-            // Tombol Tonton Video
-            Padding(
-              padding: const EdgeInsets.fromLTRB(40, 8, 40, 24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: () => _showComingSoon(context, 'Pemutar video'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _green,
-                    foregroundColor: AppColors.white,
-                    elevation: 4,
-                    shadowColor: Colors.black26,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Tonton Video',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _ganti(int delta) {
+    final next = _halaman + delta;
+    if (next < 1 || next > widget.totalHalaman) return;
+    setState(() => _halaman = next);
   }
 
-  static void _showComingSoon(BuildContext context, String menu) {
+  void _selesaikan() {
+    setState(() => _selesai = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Materi ditandai selesai'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    Navigator.pop(context, true); // beri tahu halaman daftar bahwa materi selesai
+  }
+
+  void _showComingSoon(String menu) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$menu akan kita buat berikutnya, ya!'),
@@ -251,103 +55,156 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
       ),
     );
   }
-}
-
-class _TabButton extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TabButton({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? const Color(0xFF219653) : const Color(0xFFEDEDED),
-      elevation: selected ? 0 : 3,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          height: 30,
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.white : AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FileCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String info;
-  final bool showDownload;
-  final VoidCallback onTap;
-
-  const _FileCard({
-    required this.icon,
-    required this.title,
-    required this.info,
-    required this.onTap,
-    this.showDownload = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.white,
-      elevation: 4,
-      shadowColor: Colors.black26,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 30, color: const Color(0xFF219653)),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      info,
-                      style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 9,
+              // Header
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => Navigator.maybePop(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(
+                        Icons.arrow_back,
                         color: AppColors.textPrimary,
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.judul,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Viewer halaman materi
+              Container(
+                width: double.infinity,
+                height: 280,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x33000000),
+                      blurRadius: 6,
+                      offset: Offset(0, 3),
+                    ),
                   ],
                 ),
-              ),
-              if (showDownload)
-                const Icon(
-                  Icons.download_rounded,
-                  size: 24,
-                  color: Color(0xFF219653),
+                alignment: Alignment.center,
+                // TODO: ganti dengan PDF viewer (mis. pdfx / syncfusion_flutter_pdfviewer)
+                child: Text(
+                  '${widget.mapel}\nHalaman $_halaman',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyle.bodySmall.copyWith(
+                    fontSize: 12,
+                    color: const Color(0xFF9CA3AF),
+                  ),
                 ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Navigasi halaman
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: _halaman > 1 ? () => _ganti(-1) : null,
+                    icon: const Icon(Icons.arrow_back, size: 20),
+                    color: AppColors.textPrimary,
+                  ),
+                  Text(
+                    'Halaman $_halaman/${widget.totalHalaman}',
+                    style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
+                  ),
+                  IconButton(
+                    onPressed:
+                        _halaman < widget.totalHalaman ? () => _ganti(1) : null,
+                    icon: const Icon(Icons.arrow_forward, size: 20),
+                    color: AppColors.textPrimary,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Download File
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 36,
+                  child: OutlinedButton(
+                    onPressed: () => _showComingSoon('Unduh file'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.white,
+                      foregroundColor: _green,
+                      side: const BorderSide(color: Colors.black87),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Download File',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Selesaikan Materi
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: _selesai ? null : _selesaikan,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _green,
+                      foregroundColor: AppColors.white,
+                      disabledBackgroundColor: _green.withOpacity(0.5),
+                      disabledForegroundColor: AppColors.white,
+                      elevation: 4,
+                      shadowColor: Colors.black26,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      _selesai ? 'Materi Selesai' : 'Selesaikan Materi',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

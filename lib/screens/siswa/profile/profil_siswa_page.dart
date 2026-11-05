@@ -4,8 +4,7 @@ import '../../../services/auth_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../../auth/login_page.dart';
-import '../Materi/materi_page.dart';
-import '../tugas/tugas_page.dart';
+import '../siswa_bottom_nav.dart';
 import 'edit_profil_siswa.dart';
 
 class ProfilSiswaPage extends StatefulWidget {
@@ -29,7 +28,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
   String _alamat = 'Kedungwaru, Tulungagung';
   final String _waliKelas = 'Bu Siti Nurhazia';
 
-  // Membuka halaman edit, lalu update tampilan kalau ada perubahan
+  // Membuka halaman edit, lalu update tampilan kalau ada perubahan.
   Future<void> _editProfile() async {
     final result = await Navigator.push<Map<String, String>>(
       context,
@@ -41,6 +40,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
         ),
       ),
     );
+
     if (result != null && mounted) {
       setState(() {
         _nama = result['nama'] ?? _nama;
@@ -144,6 +144,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
     currentPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
+
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password berhasil diubah (dummy).')),
@@ -175,6 +176,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
         ],
       ),
     );
+
     if (shouldLogout != true || !mounted) return;
 
     _authService.logout();
@@ -219,15 +221,9 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 26),
-
-                    // Kartu profil
                     _buildProfileCard(_nama, _kelas),
-
                     const SizedBox(height: 26),
-
-                    // Data pribadi
                     const _SectionTitle(
                       title: 'Data Pribadi',
                       color: _greenDark,
@@ -237,10 +233,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                     _InfoRow(label: 'Email', value: _email),
                     _InfoRow(label: 'Alamat', value: _alamat),
                     _InfoRow(label: 'Wali kelas', value: _waliKelas),
-
                     const SizedBox(height: 36),
-
-                    // Pengaturan
                     const _SectionTitle(
                       title: 'Pengaturan',
                       color: Color(0xFF878787),
@@ -265,7 +258,6 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                 ),
               ),
             ),
-
             // Tombol edit profil
             Padding(
               padding: const EdgeInsets.fromLTRB(50, 0, 50, 16),
@@ -301,46 +293,8 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 3,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.white,
-        selectedItemColor: _green,
-        unselectedItemColor: const Color(0xFFD1D5DB),
-        selectedFontSize: 10,
-        unselectedFontSize: 10,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } else if (index == 1) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const MateriPage()),
-            );
-          } else if (index == 2) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const TugasPage()),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded, size: 28),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined, size: 28),
-            label: 'Materi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_note_rounded, size: 28),
-            label: 'Tugas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline, size: 28),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
+      bottomNavigationBar: const SiswaBottomNav(currentIndex: 3),
     );
   }
 
