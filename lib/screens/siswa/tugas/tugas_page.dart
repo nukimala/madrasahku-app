@@ -6,26 +6,36 @@ import '../siswa_bottom_nav.dart';
 import '../siswa_home_page.dart';
 import 'upload_tugas_page.dart';
 
-enum TugasStatus { aktif, dikumpulkan, selesai }
+enum TugasStatus { aktif, selesai, terlambat }
 
 class _TugasItem {
   final String title;
   final String subject;
-  final String fileInfo;
+  final String startTime;
+  final String startDate;
+  final String endTime;
+  final String endDate;
   final TugasStatus status;
-  final bool isNew;
+
+  /// Dipakai untuk pengelompokan di tab Selesai & Terlambat.
+  final String month;
+
+  /// Tugas mendesak (judul & jam deadline berwarna merah) di tab Aktif.
+  final bool isUrgent;
 
   const _TugasItem({
     required this.title,
     required this.subject,
-    required this.fileInfo,
+    required this.startTime,
+    required this.startDate,
+    required this.endTime,
+    required this.endDate,
     required this.status,
-    this.isNew = false,
+    this.month = 'November 2026',
+    this.isUrgent = false,
   });
 
-  // Dummy: semua tugas memakai batas waktu yang sama.
-  // Nanti bisa diganti menjadi field biasa saat data datang dari API.
-  String get deadline => '12 April 2026, 23.59';
+  String get deadline => '$endDate, $endTime';
 }
 
 class TugasPage extends StatefulWidget {
@@ -38,72 +48,115 @@ class TugasPage extends StatefulWidget {
 class _TugasPageState extends State<TugasPage> {
   // Data dummy (nanti bisa diganti dari API / database)
   static const List<_TugasItem> _allTugas = [
+    // ---- Aktif ----
     _TugasItem(
       title: 'Persamaan Linear',
       subject: 'Matematika',
-      fileInfo: 'PDF 2.5 MB',
-      status: TugasStatus.aktif,
-      isNew: true,
-    ),
-    _TugasItem(
-      title: 'Hafalan Surat',
-      subject: 'Al-Quran Hadis',
-      fileInfo: 'PDF 2.5 MB',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.aktif,
     ),
     _TugasItem(
-      title: 'Kosa Kata Bahasa Arab',
+      title: 'Doa sebelum tidur',
       subject: 'Bahasa Arab',
-      fileInfo: 'PDF 2.5 MB',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.aktif,
     ),
     _TugasItem(
-      title: 'Adab Islami',
-      subject: 'Akidah Akhlak',
-      fileInfo: 'PPT 2.5 MB',
+      title: 'Software Hardware',
+      subject: 'Informatika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.aktif,
     ),
     _TugasItem(
-      title: 'Ketentuan Zakat',
-      subject: 'Fikih',
-      fileInfo: 'PDF 2.5 MB',
+      title: 'Sumpah Pemuda',
+      subject: 'IPAS',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.aktif,
     ),
     _TugasItem(
-      title: 'Fotosintesis',
-      subject: 'IPA',
-      fileInfo: 'Gambar 2.5 MB',
+      title: 'FPB dan KPK',
+      subject: 'Matematika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.aktif,
+      isUrgent: true,
     ),
+
+    // ---- Selesai ----
     _TugasItem(
-      title: 'Teks Narasi',
-      subject: 'Bahasa Indonesia',
-      fileInfo: 'PDF 1.8 MB',
-      status: TugasStatus.dikumpulkan,
-    ),
-    _TugasItem(
-      title: 'Sejarah Kerajaan Islam',
-      subject: 'SKI',
-      fileInfo: 'PPT 3.2 MB',
+      title: 'Persamaan Linear',
+      subject: 'Matematika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
       status: TugasStatus.selesai,
+      month: 'November 2026',
+    ),
+    _TugasItem(
+      title: 'Persamaan Linear',
+      subject: 'Matematika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
+      status: TugasStatus.selesai,
+      month: 'Oktober 2026',
+    ),
+
+    // ---- Terlambat ----
+    _TugasItem(
+      title: 'Persamaan Linear',
+      subject: 'Matematika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
+      status: TugasStatus.terlambat,
+      month: 'November 2026',
+    ),
+    _TugasItem(
+      title: 'Persamaan Linear',
+      subject: 'Matematika',
+      startTime: '07:01',
+      startDate: 'sel,3 november',
+      endTime: '16:00',
+      endDate: 'Kamis,4 november',
+      status: TugasStatus.terlambat,
+      month: 'Oktober 2026',
     ),
   ];
 
-  static const List<String> _tabs = ['Aktif', 'Dikumpulkan', 'Selesai'];
+  static const List<String> _tabs = ['Aktif', 'Selesai', 'Terlambat'];
 
   int _selectedTab = 0;
-  String _query = '';
 
   List<_TugasItem> get _filtered {
     final status = TugasStatus.values[_selectedTab];
-    return _allTugas.where((t) {
-      final matchStatus = t.status == status;
-      final q = _query.trim().toLowerCase();
-      final matchQuery = q.isEmpty ||
-          t.title.toLowerCase().contains(q) ||
-          t.subject.toLowerCase().contains(q);
-      return matchStatus && matchQuery;
-    }).toList();
+    return _allTugas.where((t) => t.status == status).toList();
+  }
+
+  /// Kelompokkan tugas per bulan (urutan kemunculan dipertahankan).
+  Map<String, List<_TugasItem>> _groupByMonth(List<_TugasItem> items) {
+    final map = <String, List<_TugasItem>>{};
+    for (final item in items) {
+      map.putIfAbsent(item.month, () => []).add(item);
+    }
+    return map;
   }
 
   void _openUpload(_TugasItem item) {
@@ -130,6 +183,7 @@ class _TugasPageState extends State<TugasPage> {
   @override
   Widget build(BuildContext context) {
     final items = _filtered;
+    final isAktif = _selectedTab == 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -155,64 +209,28 @@ class _TugasPageState extends State<TugasPage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text('Tugas', style: AppTextStyle.headingSmall),
+                  Text('Daftar Tugas', style: AppTextStyle.headingSmall),
                 ],
               ),
 
               const SizedBox(height: 16),
 
-              // Tab filter
-              Row(
-                children: List.generate(_tabs.length, (index) {
-                  final selected = index == _selectedTab;
-                  return Expanded(
-                    child: Padding(
+              // Tab filter (Aktif | Selesai | Terlambat)
+              Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(_tabs.length, (index) {
+                    return Padding(
                       padding: EdgeInsets.only(
-                        right: index == _tabs.length - 1 ? 0 : 8,
+                        right: index == _tabs.length - 1 ? 0 : 10,
                       ),
                       child: _TabChip(
                         label: _tabs[index],
-                        selected: selected,
+                        selected: index == _selectedTab,
                         onTap: () => setState(() => _selectedTab = index),
                       ),
-                    ),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Search
-              Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  onChanged: (value) => setState(() => _query = value),
-                  style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
-                  decoration: InputDecoration(
-                    hintText: 'Cari Tugas...',
-                    hintStyle: AppTextStyle.bodySmall.copyWith(
-                      fontSize: 12,
-                      color: const Color(0xFF9CA3AF),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      size: 20,
-                      color: Color(0xFF6B7280),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
+                    );
+                  }),
                 ),
               ),
 
@@ -227,26 +245,61 @@ class _TugasPageState extends State<TugasPage> {
                           style: AppTextStyle.bodySmall,
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 16, top: 2),
-                        itemCount: items.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          return _TugasCard(
-                            item: item,
-                            onTap: () => _openUpload(item),
-                          );
-                        },
-                      ),
+                    : isAktif
+                        ? _buildFlatList(items)
+                        : _buildGroupedList(items),
               ),
             ],
           ),
         ),
       ),
 
-      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
+      // Bottom navigation yang sudah ada di siswa_bottom_nav.dart.
       bottomNavigationBar: const SiswaBottomNav(currentIndex: 2),
+    );
+  }
+
+  // Tab Aktif: daftar biasa tanpa pengelompokan bulan.
+  Widget _buildFlatList(List<_TugasItem> items) {
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 16, top: 2),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _TugasCard(item: item, onTap: () => _openUpload(item));
+      },
+    );
+  }
+
+  // Tab Selesai & Terlambat: dikelompokkan per bulan dengan badge status.
+  Widget _buildGroupedList(List<_TugasItem> items) {
+    final groups = _groupByMonth(items);
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 16, top: 2),
+      children: [
+        for (final entry in groups.entries) ...[
+          Center(
+            child: Text(
+              entry.key,
+              style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 12),
+          for (final item in entry.value) ...[
+            _TugasCard(
+              item: item,
+              showBadge: true,
+              onTap: () => _openUpload(item),
+            ),
+            const SizedBox(height: 12),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 }
@@ -266,19 +319,21 @@ class _TabChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? const Color(0xFF219653) : AppColors.white,
-      elevation: selected ? 0 : 2,
-      shadowColor: Colors.black26,
+      elevation: selected ? 0 : 3,
+      shadowColor: Colors.black38,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          height: 32,
+          height: 28,
+          constraints: const BoxConstraints(minWidth: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           child: Text(
             label,
             style: AppTextStyle.bodySmall.copyWith(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: selected ? AppColors.white : AppColors.textPrimary,
             ),
@@ -292,11 +347,20 @@ class _TabChip extends StatelessWidget {
 class _TugasCard extends StatelessWidget {
   final _TugasItem item;
   final VoidCallback onTap;
+  final bool showBadge;
 
-  const _TugasCard({required this.item, required this.onTap});
+  const _TugasCard({
+    required this.item,
+    required this.onTap,
+    this.showBadge = false,
+  });
+
+  static const Color _red = Color(0xFFEF4444);
 
   @override
   Widget build(BuildContext context) {
+    final urgentColor = item.isUrgent ? Colors.red : AppColors.textPrimary;
+
     return Material(
       color: AppColors.white,
       elevation: 4,
@@ -306,60 +370,152 @@ class _TugasCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.description, size: 30, color: Color(0xFF60A5FA)),
-              const SizedBox(width: 14),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.description,
+                  size: 28,
+                  color: Color(0xFF60A5FA),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+                    // Judul + badge
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyle.headingSmall.copyWith(
+                              fontSize: 12,
+                              color: urgentColor,
+                            ),
+                          ),
+                        ),
+                        if (showBadge) _StatusBadge(status: item.status),
+                      ],
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       item.subject,
                       style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 10,
+                        fontSize: 8,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    Text(
-                      item.fileInfo,
-                      style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 10,
-                        color: AppColors.textPrimary,
-                      ),
+                    const SizedBox(height: 6),
+
+                    // Waktu mulai -> waktu deadline
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: _TimeBlock(
+                            time: item.startTime,
+                            date: item.startDate,
+                          ),
+                        ),
+                        const Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 6),
+                            child: Align(
+                              alignment: Alignment.topCenter,
+                              child: Icon(
+                                Icons.arrow_forward,
+                                size: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 4,
+                          child: _TimeBlock(
+                            time: item.endTime,
+                            date: item.endDate,
+                            color: item.isUrgent ? _red : null,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              if (item.isNew)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFD9D9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Baru',
-                    style: TextStyle(
-                      color: Color(0xFFEF4444),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeBlock extends StatelessWidget {
+  final String time;
+  final String date;
+  final Color? color;
+
+  const _TimeBlock({required this.time, required this.date, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppColors.textPrimary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          time,
+          style: AppTextStyle.bodySmall.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: c,
+          ),
+        ),
+        Text(
+          date,
+          style: AppTextStyle.bodySmall.copyWith(
+            fontSize: 7,
+            color: color ?? AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final TugasStatus status;
+
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelesai = status == TugasStatus.selesai;
+    final bg = isSelesai ? const Color(0xFFD1F5DC) : const Color(0xFFFFD9D9);
+    final fg = isSelesai ? const Color(0xFF219653) : const Color(0xFFEF4444);
+    final label = isSelesai ? 'Selesai' : 'Terlambat';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: fg,
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
