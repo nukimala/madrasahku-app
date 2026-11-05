@@ -27,7 +27,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
   int _currentIndex = 0;
 
   static const Color _green = Color(0xFF219653);
-  static const Color _blue = Color(0xFF60A5FA);
+  
 
   final int _tugasPerluDinilai = 2;
 
@@ -38,14 +38,6 @@ class _GuruHomePageState extends State<GuruHomePage> {
     });
   }
 
-  void _showComingSoon(String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   // Membuka halaman jadwal lengkap.
   Future<void> _openJadwal() async {
