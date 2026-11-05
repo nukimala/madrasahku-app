@@ -12,12 +12,10 @@ class RekapPresensiPage extends StatefulWidget {
 }
 
 class _RekapPresensiPageState extends State<RekapPresensiPage> {
-  final TextEditingController _namaController =
-      TextEditingController();
-
   String _selectedMapel = 'Matematika';
-  String _appliedNama = '';
+  String _selectedKelas = 'Kelas VIII A';
   String _appliedMapel = 'Matematika';
+  String _appliedKelas = 'Kelas VIII A';
   bool _hasShown = false;
 
   static const List<String> _mataPelajaran = [
@@ -26,10 +24,20 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     'IPA',
   ];
 
+  static const List<String> _daftarKelas = [
+    'Kelas VII A',
+    'Kelas VII B',
+    'Kelas VIII A',
+    'Kelas VIII B',
+    'Kelas IX A',
+    'Kelas IX B',
+  ];
+
   // Data contoh untuk tampilan.
   static const List<_PresensiMapel> _dataPresensi = [
     _PresensiMapel(
       nama: 'Matematika',
+      kelas: 'Kelas VIII A',
       hadir: 25,
       izin: 2,
       sakit: 1,
@@ -38,6 +46,7 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     ),
     _PresensiMapel(
       nama: 'Bahasa Indonesia',
+      kelas: 'Kelas VIII A',
       hadir: 25,
       izin: 2,
       sakit: 1,
@@ -46,6 +55,7 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     ),
     _PresensiMapel(
       nama: 'IPA',
+      kelas: 'Kelas VIII A',
       hadir: 25,
       izin: 2,
       sakit: 1,
@@ -54,18 +64,12 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     ),
   ];
 
-  @override
-  void dispose() {
-    _namaController.dispose();
-    super.dispose();
-  }
-
   void _tampilkanRekap() {
     FocusScope.of(context).unfocus();
 
     setState(() {
-      _appliedNama = _namaController.text.trim();
       _appliedMapel = _selectedMapel;
+      _appliedKelas = _selectedKelas;
       _hasShown = true;
     });
   }
@@ -75,14 +79,10 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     final filteredData = _dataPresensi.where((item) {
       final cocokMapel =
           !_hasShown || item.nama == _appliedMapel;
+      final cocokKelas =
+          !_hasShown || item.kelas == _appliedKelas;
 
-      final query = _appliedNama.toLowerCase();
-
-      final cocokNama = query.isEmpty ||
-          item.namaGuru.toLowerCase().contains(query) ||
-          item.nama.toLowerCase().contains(query);
-
-      return cocokMapel && cocokNama;
+      return cocokMapel && cocokKelas;
     }).toList();
 
     return Scaffold(
@@ -131,45 +131,10 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pilih nama',
+                      'Pilih Mapel',
                       style: _labelStyle,
                     ),
                     const SizedBox(height: 12),
-
-                    _InputSurface(
-                      child: TextField(
-                        controller: _namaController,
-                        textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _tampilkanRekap(),
-                        style: AppTextStyle.bodyLarge.copyWith(
-                          fontSize: 14,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Masukkan nama guru',
-                          hintStyle:
-                              AppTextStyle.bodyLarge.copyWith(
-                            color: const Color(0xFF929292),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(
-                            horizontal: 34,
-                            vertical: 15,
-                          ),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      'Pilih mapel yang diampu',
-                      style: _labelStyle,
-                    ),
-                    const SizedBox(height: 8),
 
                     _InputSurface(
                       child: DropdownButtonHideUnderline(
@@ -201,6 +166,51 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                             if (value != null) {
                               setState(() {
                                 _selectedMapel = value;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'Pilih Kelas',
+                      style: _labelStyle,
+                    ),
+                    const SizedBox(height: 8),
+
+                    _InputSurface(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedKelas,
+                          isExpanded: true,
+                          icon: const Padding(
+                            padding: EdgeInsets.only(right: 16),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 28,
+                              color: Color(0xFF222222),
+                            ),
+                          ),
+                          padding: const EdgeInsets.only(left: 34),
+                          borderRadius: BorderRadius.circular(14),
+                          style: AppTextStyle.bodyLarge.copyWith(
+                            color: const Color(0xFF929292),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          items: _daftarKelas.map((kelas) {
+                            return DropdownMenuItem<String>(
+                              value: kelas,
+                              child: Text(kelas),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedKelas = value;
                               });
                             }
                           },
@@ -310,7 +320,7 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                   borderRadius: BorderRadius.circular(17),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.13),
+                      color: Colors.black.withOpacity(0.13), 
                       blurRadius: 18,
                       offset: const Offset(0, 5),
                     ),
@@ -490,6 +500,7 @@ class _PresensiRow extends StatelessWidget {
 // Model data contoh.
 class _PresensiMapel {
   final String nama;
+  final String kelas;
   final int hadir;
   final int izin;
   final int sakit;
@@ -498,6 +509,7 @@ class _PresensiMapel {
 
   const _PresensiMapel({
     required this.nama,
+    required this.kelas,
     required this.hadir,
     required this.izin,
     required this.sakit,
