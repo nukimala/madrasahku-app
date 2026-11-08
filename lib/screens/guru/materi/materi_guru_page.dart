@@ -4,6 +4,7 @@ import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
 import 'tambah_materi_page.dart';
+import 'tambah_tugas_page.dart';
 
 // MODEL SEMENTARA 
 class _Item {
@@ -176,10 +177,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                       warna: const Color(0xFF2F80ED),
                       label: 'Upload Tugas',
                       onTap: () {
-                        Navigator.pop(ctx);
-
-                        // TODO: buka halaman Tambah Tugas (langkah berikutnya)
-                        _snack('Halaman Tambah Tugas menyusul');
+                                               Navigator.pop(ctx);
+                        _bukaTambahTugas(topik);
                       },
                     ),
                   ),
@@ -215,6 +214,37 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
           sub: hasil.deskripsi.isNotEmpty
               ? hasil.deskripsi
               : (hasil.namaFile ?? ''),
+        ),
+      );
+      _terbuka.add(topik);
+    });
+  }
+
+    // BUKA HALAMAN TAMBAH TUGAS
+  Future<void> _bukaTambahTugas(_Topik topik) async {
+    final hasil = await Navigator.push<TugasBaru>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TambahTugasPage(
+          topik: topik.judul,
+          kelas: _kelas,
+          mapel: _mapel,
+        ),
+      ),
+    );
+
+    if (hasil == null || !mounted) return;
+
+    final d = hasil.deadline;
+
+    setState(() {
+      topik.items.add(
+        _Item(
+          judul: hasil.judul,
+          sub: 'Deadline: ${d.day}/${d.month}/${d.year}, '
+              '${d.hour.toString().padLeft(2, '0')}.'
+              '${d.minute.toString().padLeft(2, '0')}',
+          isTugas: true,
         ),
       );
       _terbuka.add(topik);
