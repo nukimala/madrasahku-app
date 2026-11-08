@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
+import 'pengumpulan_tugas.dart';
+import '../../../models/tugas_model.dart';
 
 class TugasGuruPage extends StatefulWidget {
   const TugasGuruPage({super.key});
@@ -12,340 +14,305 @@ class TugasGuruPage extends StatefulWidget {
 }
 
 class _TugasGuruPageState extends State<TugasGuruPage> {
-  static const Color _green = Color(0xFF219653);
-  static const Color _blue = Color(0xFF60A5FA);
+  static const Color _topikBg = Color(0xFFF1EDEC);
 
-  final TextEditingController _searchController = TextEditingController();
-
-  // Pilihan dropdown (nanti bisa diganti dari database)
-  final List<String> _kelasList = const [
+  static const _kelasList = [
     'Kelas VII A',
+    'Kelas VII B',
     'Kelas VIII A',
+    'Kelas VIII B',
     'Kelas IX A',
   ];
-  final List<String> _mapelList = const [
+
+  static const _mapelList = [
     'Matematika',
-    'Al-Quran Hadis',
-    'Bahasa Arab',
+    'Bahasa Indonesia',
+    'IPA',
+    'IPS',
+    'Bahasa Inggris',
   ];
 
-  String _selectedKelas = 'Kelas VIII A';
-  String _selectedMapel = 'Matematika';
+  String _kelas = 'Kelas VIII A';
+  String _mapel = 'Matematika';
   String _query = '';
 
-  // Data dummy tugas (nanti bisa diganti dari database)
-  final List<Map<String, String>> _tugas = [
-    {
-      'judul': 'Himpunan',
-      'bab': 'Bab 3 - Himpunan',
-      'file': 'PDF 2.5 MB',
-    },
-    {
-      'judul': 'Persaamaan Linier',
-      'bab': 'Bab 3 - Persamaan Linear',
-      'file': 'PPT 2.5 MB',
-    },
-    {
-      'judul': 'Fungsi Linier',
-      'bab': 'Bab 3 - Fungsi Linear',
-      'file': 'PDF 2.5 MB',
-    },
-    {
-      'judul': 'Aritmatika',
-      'bab': 'Bab 3 -AritmatikaLinear',
-      'file': 'PPT 2.5 MB',
-    },
-    {
-      'judul': 'Statistika',
-      'bab': 'Bab 3 - Statistika',
-      'file': 'PDF 2.5 MB',
-    },
-  ];
+  final List<TopikTugas> _topik = contohTopikTugas();
+  final Set<TopikTugas> _terbuka = {};
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Topik pertama terbuka di awal.
+    if (_topik.isNotEmpty) _terbuka.add(_topik.first);
   }
 
-  void _showComingSoon(String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
+  List<TopikTugas> get _hasil {
+    final q = _query.toLowerCase();
+
+    return _topik.where((t) {
+      if (t.kelas != _kelas || t.mapel != _mapel) return false;
+      if (q.isEmpty) return true;
+
+      return t.judul.toLowerCase().contains(q) ||
+          t.tugas.any((x) => x.judul.toLowerCase().contains(q));
+    }).toList();
+  }
+
+  // Buka halaman penilaian tugas.
+  Future<void> _bukaTugas(TopikTugas topik, TugasGuru tugas) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PengumpulanTugasPage(
+          minggu: topik.minggu,
+          kelas: topik.kelas,
+          tugas: tugas,
+        ),
       ),
     );
-  }
 
-  List<Map<String, String>> get _filteredTugas {
-    final q = _query.trim().toLowerCase();
-    if (q.isEmpty) return _tugas;
-    return _tugas
-        .where((t) =>
-            t['judul']!.toLowerCase().contains(q) ||
-            t['bab']!.toLowerCase().contains(q))
-        .toList();
+    // Refresh setelah kembali (nilai mungkin berubah).
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = _filteredTugas;
+    final daftar = _hasil;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 12, 20, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    'Tugas',
-                    style: AppTextStyle.headingSmall.copyWith(fontSize: 16),
-                  ),
-                ],
-              ),
-            ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tugas',
+            style: AppTextStyle.headingSmall.copyWith(fontSize: 16),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-            // Filter kelas & mapel
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildDropdown(
-                      value: _selectedKelas,
-                      items: _kelasList,
-                      onChanged: (v) => setState(() => _selectedKelas = v!),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildDropdown(
-                      value: _selectedMapel,
-                      items: _mapelList,
-                      onChanged: (v) => setState(() => _selectedMapel = v!),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Pencarian
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _buildSearch(),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Daftar tugas
-            Expanded(
-              child: data.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Tugas tidak ditemukan',
-                        style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 14),
-                      itemBuilder: (context, i) {
-                        final t = data[i];
-                        return _TugasCard(
-                          judul: t['judul']!,
-                          bab: t['bab']!,
-                          file: t['file']!,
-                          iconColor: _blue,
-                          onTap: () => _showComingSoon(t['judul']!),
-                        );
-                      },
-                    ),
-            ),
-
-            // Tombol tambah tugas
-            Padding(
-              padding: const EdgeInsets.fromLTRB(40, 8, 40, 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () => _showComingSoon('Tambah Tugas'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _green,
-                    foregroundColor: Colors.white,
-                    elevation: 4,
-                    shadowColor: Colors.black26,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: const Text(
-                    '+ Tambah Tugas',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+          // Filter kelas dan mata pelajaran.
+          Row(
+            children: [
+              Expanded(
+                child: _Dropdown(
+                  value: _kelas,
+                  items: _kelasList,
+                  onChanged: (v) => setState(() => _kelas = v),
                 ),
               ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: _Dropdown(
+                  value: _mapel,
+                  items: _mapelList,
+                  onChanged: (v) => setState(() => _mapel = v),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Kolom cari.
+          _Kotak(
+            child: TextField(
+              onChanged: (v) => setState(() => _query = v.trim()),
+              style: const TextStyle(fontSize: 12),
+              decoration: const InputDecoration(
+                icon: Icon(Icons.search, size: 20),
+                hintText: 'Cari Tugas....',
+                hintStyle: TextStyle(fontSize: 12, color: Colors.grey),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
+          ),
+
+          const SizedBox(height: 12),
+
+          Expanded(
+            child: daftar.isEmpty
+                ? Center(
+                    child: Text(
+                      'Belum ada topik.',
+                      style: AppTextStyle.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    itemCount: daftar.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) => _buildTopik(daftar[i]),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Card topik berisi daftar tugas minggu itu.
+  Widget _buildTopik(TopikTugas t) {
+    final terbuka = _terbuka.contains(t) || _query.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _topikBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() {
+              terbuka ? _terbuka.remove(t) : _terbuka.add(t);
+            }),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Topik',
+                        style: AppTextStyle.bodySmall.copyWith(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        t.judul,
+                        style: AppTextStyle.headingSmall.copyWith(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Icon(
+                  terbuka
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                ),
+              ],
+            ),
+          ),
+
+          if (terbuka) ...[
+            const SizedBox(height: 10),
+
+            if (t.tugas.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Belum ada tugas di topik ini.',
+                  style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
+                ),
+              ),
+
+            ...t.tugas.map((x) => _buildTugas(t, x)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTugas(TopikTugas t, TugasGuru x) {
+    return GestureDetector(
+      onTap: () => _bukaTugas(t, x),
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    x.judul,
+                    style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Deadline: ${formatTglJamPanjang(x.deadline)}',
+                    style: AppTextStyle.bodySmall.copyWith(fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+
+            const Icon(Icons.chevron_right, size: 22),
           ],
         ),
       ),
     );
   }
+}
 
-  // Dropdown putih dengan bayangan
-  Widget _buildDropdown({
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-  }) {
+// =========================================================
+// WIDGET KECIL PENDUKUNG
+// =========================================================
+
+class _Kotak extends StatelessWidget {
+  final Widget child;
+  const _Kotak({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      height: 46,
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: _cardDecoration(radius: 12),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-          style: AppTextStyle.bodyMedium.copyWith(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
-          items: items
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-              .toList(),
-          onChanged: onChanged,
-        ),
+        ],
       ),
-    );
-  }
-
-  // Kolom cari
-  Widget _buildSearch() {
-    return Container(
-      height: 46,
-      decoration: _cardDecoration(radius: 12),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (v) => setState(() => _query = v),
-        style: const TextStyle(fontSize: 13),
-        decoration: const InputDecoration(
-          hintText: 'Cari Tugas....',
-          hintStyle: TextStyle(
-            color: Color(0xFF8A9B91),
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-          prefixIcon: Icon(Icons.search, color: Colors.black87, size: 24),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 13),
-        ),
-      ),
-    );
-  }
-
-  
-
-  static BoxDecoration _cardDecoration({double radius = 14}) {
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x1A000000),
-          blurRadius: 8,
-          offset: Offset(0, 2),
-        ),
-      ],
+      child: child,
     );
   }
 }
 
-class _TugasCard extends StatelessWidget {
-  final String judul;
-  final String bab;
-  final String file;
-  final Color iconColor;
-  final VoidCallback onTap;
+class _Dropdown extends StatelessWidget {
+  final String value;
+  final List<String> items;
+  final ValueChanged<String> onChanged;
 
-  const _TugasCard({
-    required this.judul,
-    required this.bab,
-    required this.file,
-    required this.iconColor,
-    required this.onTap,
+  const _Dropdown({
+    required this.value,
+    required this.items,
+    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1A000000),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.description, size: 38, color: iconColor),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      judul,
-                      style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      bab,
-                      style: AppTextStyle.bodySmall.copyWith(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      file,
-                      style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return _Kotak(
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+          style: const TextStyle(fontSize: 12, color: Colors.black),
+          items: items
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
         ),
       ),
     );
