@@ -96,20 +96,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Menu notifikasi belum tersedia'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      size: 30,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
                 ],
               ),
 

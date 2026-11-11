@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../../utilis/app_colors.dart';
@@ -12,11 +11,25 @@ class RekapPresensiPage extends StatefulWidget {
 }
 
 class _RekapPresensiPageState extends State<RekapPresensiPage> {
-  String _selectedMapel = 'Matematika';
-  String _selectedKelas = 'Kelas VIII A';
-  String _appliedMapel = 'Matematika';
-  String _appliedKelas = 'Kelas VIII A';
-  bool _hasShown = false;
+  // Nilai filter waktu: 'semua', 'minggu', 'rentang', atau 'yyyy-MM'.
+  static const String _semua = 'semua';
+  static const String _minggu = 'minggu';
+  static const String _rentang = 'rentang';
+
+  static const List<String> _namaBulan = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
 
   static const List<String> _mataPelajaran = [
     'Matematika',
@@ -33,57 +46,201 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     'Kelas IX B',
   ];
 
-  // Data contoh untuk tampilan.
-  static const List<_PresensiMapel> _dataPresensi = [
-    _PresensiMapel(
-      nama: 'Matematika',
-      kelas: 'Kelas VIII A',
-      hadir: 25,
-      izin: 2,
-      sakit: 1,
-      alpha: 2,
-      namaGuru: 'Guru Matematika',
-    ),
-    _PresensiMapel(
-      nama: 'Bahasa Indonesia',
-      kelas: 'Kelas VIII A',
-      hadir: 25,
-      izin: 2,
-      sakit: 1,
-      alpha: 2,
-      namaGuru: 'Guru Bahasa Indonesia',
-    ),
-    _PresensiMapel(
-      nama: 'IPA',
-      kelas: 'Kelas VIII A',
-      hadir: 25,
-      izin: 2,
-      sakit: 1,
-      alpha: 2,
-      namaGuru: 'Guru IPA',
-    ),
-  ];
+  static const List<String> _daftarSiswa = ['Mustofa', 'Said', 'Subiyanti'];
+
+  // Nilai yang sedang dipilih di form.
+  String _selectedFilter = _semua;
+  String _selectedMapel = 'Matematika';
+  String _selectedKelas = 'Kelas VIII A';
+  late DateTime _dari;
+  late DateTime _sampai;
+
+  // Nilai yang sudah diterapkan (setelah tombol Tampilkan ditekan).
+  String _appliedFilter = _semua;
+  String _appliedMapel = 'Matematika';
+  String _appliedKelas = 'Kelas VIII A';
+  late DateTime _appliedDari;
+  late DateTime _appliedSampai;
+
+  late final List<_CatatanPresensi> _catatan;
+  late final List<String> _opsiBulan;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    _dari = today.subtract(const Duration(days: 7));
+    _sampai = today;
+    _appliedDari = _dari;
+    _appliedSampai = _sampai;
+
+    // 12 bulan terakhir, dimulai dari bulan sekarang.
+    _opsiBulan = List.generate(12, (i) {
+      final d = DateTime(today.year, today.month - i, 1);
+      return _bulanKey(d);
+    });
+
+    _catatan = _buatDataContoh(today);
+  }
+
+  // Data contoh untuk tampilan. Ganti dengan data dari API / database.
+  List<_CatatanPresensi> _buatDataContoh(DateTime today) {
+    final hasil = <_CatatanPresensi>[];
+
+    for (final mapel in _mataPelajaran) {
+      for (final kelas in _daftarKelas) {
+        for (var s = 0; s < _daftarSiswa.length; s++) {
+          for (var hari = 0; hari < 330; hari++) {
+            final tanggal = today.subtract(Duration(days: hari));
+            if (tanggal.weekday == DateTime.saturday ||
+                tanggal.weekday == DateTime.sunday) {
+              continue;
+            }
+            final pulang = (hari + s * 3) % 13 == 0;
+            hasil.add(
+              _CatatanPresensi(
+                nama: _daftarSiswa[s],
+                mapel: mapel,
+                kelas: kelas,
+                tanggal: tanggal,
+                pulang: pulang,
+              ),
+            );
+          }
+        }
+      }
+    }
+    return hasil;
+  }
+
+  String _bulanKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}';
+
+  String _labelBulan(String key) {
+    final parts = key.split('-');
+    final tahun = parts[0];
+    final bulan = int.parse(parts[1]);
+    return '${_namaBulan[bulan - 1]} $tahun';
+  }
+
+  String _labelFilter(String value) {
+    switch (value) {
+      case _semua:
+        return 'Semua Bulan';
+      case _minggu:
+        return 'Seminggu Lalu';
+      case _rentang:
+        return 'Pilih Rentang Waktu';
+      default:
+        return _labelBulan(value);
+    }
+  }
+
+  String _formatTanggal(DateTime d) {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
+  }
+
+  bool _lolosFilterWaktu(DateTime tanggal) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    switch (_appliedFilter) {
+      case _semua:
+        return true;
+      case _minggu:
+        return !tanggal.isBefore(today.subtract(const Duration(days: 7))) &&
+            !tanggal.isAfter(today);
+      case _rentang:
+        return !tanggal.isBefore(_appliedDari) &&
+            !tanggal.isAfter(_appliedSampai);
+      default:
+        return _bulanKey(tanggal) == _appliedFilter;
+    }
+  }
+
+  List<_RekapSiswa> _hitungRekap() {
+    final data = _catatan.where((c) {
+      return c.mapel == _appliedMapel &&
+          c.kelas == _appliedKelas &&
+          _lolosFilterWaktu(c.tanggal);
+    });
+
+    final Map<String, _RekapSiswa> hasil = {};
+    for (final c in data) {
+      final rekap = hasil.putIfAbsent(c.nama, () => _RekapSiswa(c.nama));
+      if (c.pulang) {
+        rekap.pulang++;
+      } else {
+        rekap.hadir++;
+      }
+    }
+
+    return hasil.values.toList();
+  }
 
   void _tampilkanRekap() {
     FocusScope.of(context).unfocus();
 
     setState(() {
+      _appliedFilter = _selectedFilter;
       _appliedMapel = _selectedMapel;
       _appliedKelas = _selectedKelas;
-      _hasShown = true;
+      _appliedDari = _dari;
+      _appliedSampai = _sampai;
+    });
+  }
+
+  Future<void> _bukaDialogFilter() async {
+    final hasil = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.25),
+      builder: (context) {
+        return _FilterDialog(
+          selected: _selectedFilter,
+          opsiBulan: _opsiBulan,
+          labelBulan: _labelBulan,
+        );
+      },
+    );
+
+    if (hasil != null) {
+      setState(() {
+        _selectedFilter = hasil;
+      });
+    }
+  }
+
+  Future<void> _pilihTanggal({required bool isDari}) async {
+    final initial = isDari ? _dari : _sampai;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      if (isDari) {
+        _dari = picked;
+        if (_sampai.isBefore(_dari)) _sampai = _dari;
+      } else {
+        _sampai = picked;
+        if (_dari.isAfter(_sampai)) _dari = _sampai;
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredData = _dataPresensi.where((item) {
-      final cocokMapel =
-          !_hasShown || item.nama == _appliedMapel;
-      final cocokKelas =
-          !_hasShown || item.kelas == _appliedKelas;
-
-      return cocokMapel && cocokKelas;
-    }).toList();
+    final rekap = _hitungRekap();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -98,10 +255,7 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      size: 27,
-                    ),
+                    icon: const Icon(Icons.arrow_back, size: 27),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
                       minWidth: 40,
@@ -122,112 +276,96 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
 
               const SizedBox(height: 24),
 
-              // Form pencarian.
+              // Form filter.
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Pilih Mapel',
-                      style: _labelStyle,
-                    ),
+                    Text('Pilih filter', style: _labelStyle),
                     const SizedBox(height: 12),
 
-                    _InputSurface(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedMapel,
-                          isExpanded: true,
-                          icon: const Padding(
-                            padding: EdgeInsets.only(right: 16),
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 28,
-                              color: Color(0xFF222222),
-                            ),
+                    // Dropdown filter waktu (membuka dialog).
+                    InkWell(
+                      borderRadius: BorderRadius.circular(15),
+                      onTap: _bukaDialogFilter,
+                      child: _InputSurface(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 34, right: 16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _labelFilter(_selectedFilter),
+                                  style: _valueStyle,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 28,
+                                color: Color(0xFF222222),
+                              ),
+                            ],
                           ),
-                          padding: const EdgeInsets.only(left: 34),
-                          borderRadius: BorderRadius.circular(14),
-                          style: AppTextStyle.bodyLarge.copyWith(
-                            color: const Color(0xFF929292),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          items: _mataPelajaran.map((mapel) {
-                            return DropdownMenuItem<String>(
-                              value: mapel,
-                              child: Text(mapel),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedMapel = value;
-                              });
-                            }
-                          },
                         ),
                       ),
                     ),
 
+                    // Dari - Sampai (hanya untuk rentang waktu).
+                    if (_selectedFilter == _rentang) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _DateField(
+                            label: 'Dari',
+                            value: _formatTanggal(_dari),
+                            onTap: () => _pilihTanggal(isDari: true),
+                          ),
+                          const SizedBox(width: 16),
+                          _DateField(
+                            label: 'Sampai',
+                            value: _formatTanggal(_sampai),
+                            onTap: () => _pilihTanggal(isDari: false),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    Text('Pilih Mapel', style: _labelStyle),
                     const SizedBox(height: 12),
 
-                    Text(
-                      'Pilih Kelas',
-                      style: _labelStyle,
+                    _InputSurface(
+                      child: _buildDropdown(
+                        value: _selectedMapel,
+                        items: _mataPelajaran,
+                        onChanged: (v) => setState(() => _selectedMapel = v),
+                      ),
                     ),
-                    const SizedBox(height: 8),
+
+                    const SizedBox(height: 16),
+
+                    Text('Pilih Kelas', style: _labelStyle),
+                    const SizedBox(height: 12),
 
                     _InputSurface(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedKelas,
-                          isExpanded: true,
-                          icon: const Padding(
-                            padding: EdgeInsets.only(right: 16),
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 28,
-                              color: Color(0xFF222222),
-                            ),
-                          ),
-                          padding: const EdgeInsets.only(left: 34),
-                          borderRadius: BorderRadius.circular(14),
-                          style: AppTextStyle.bodyLarge.copyWith(
-                            color: const Color(0xFF929292),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          items: _daftarKelas.map((kelas) {
-                            return DropdownMenuItem<String>(
-                              value: kelas,
-                              child: Text(kelas),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedKelas = value;
-                              });
-                            }
-                          },
-                        ),
+                      child: _buildDropdown(
+                        value: _selectedKelas,
+                        items: _daftarKelas,
+                        onChanged: (v) => setState(() => _selectedKelas = v),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 56),
+              const SizedBox(height: 40),
 
               // Tombol tampilkan.
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 44,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: SizedBox(
                   width: double.infinity,
                   height: 64,
@@ -237,66 +375,20 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.white,
                       elevation: 7,
-                      shadowColor:
-                          Colors.black.withOpacity(0.20),
+                      shadowColor: Colors.black.withOpacity(0.20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(21),
                       ),
                     ),
                     child: Text(
                       'Tampilkan',
-                      style: AppTextStyle.button.copyWith(
-                        fontSize: 16,
-                      ),
+                      style: AppTextStyle.button.copyWith(fontSize: 16),
                     ),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 36),
-
-              // Kartu statistik presensi.
-              Row(
-                children: const [
-                  Expanded(
-                    child: _StatCard(
-                      title: 'Hadir',
-                      count: '245',
-                      background: Color(0xFFD9F6D0),
-                      foreground: Color(0xFF159947),
-                    ),
-                  ),
-                  SizedBox(width: 9),
-                  Expanded(
-                    child: _StatCard(
-                      title: 'Izin',
-                      count: '12',
-                      background: Color(0xFFFFF0E4),
-                      foreground: Color(0xFFFF7A1A),
-                    ),
-                  ),
-                  SizedBox(width: 9),
-                  Expanded(
-                    child: _StatCard(
-                      title: 'Sakit',
-                      count: '8',
-                      background: Color(0xFFE1EEFF),
-                      foreground: Color(0xFF559AFF),
-                    ),
-                  ),
-                  SizedBox(width: 9),
-                  Expanded(
-                    child: _StatCard(
-                      title: 'Alpha',
-                      count: '5',
-                      background: Color(0xFFFFDCDC),
-                      foreground: Color(0xFFFF2525),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
 
               // Judul daftar presensi.
               Text(
@@ -307,30 +399,26 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Daftar mata pelajaran.
+              // Daftar presensi siswa.
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(
-                  28, 24, 20, 24,
-                ),
+                padding: const EdgeInsets.fromLTRB(28, 24, 20, 24),
                 decoration: BoxDecoration(
                   color: AppColors.white,
                   borderRadius: BorderRadius.circular(17),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.13), 
+                      color: Colors.black.withOpacity(0.13),
                       blurRadius: 18,
                       offset: const Offset(0, 5),
                     ),
                   ],
                 ),
-                child: filteredData.isEmpty
+                child: rekap.isEmpty
                     ? Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 18,
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         child: Center(
                           child: Text(
                             'Data presensi tidak ditemukan.',
@@ -342,16 +430,11 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
                         ),
                       )
                     : Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          for (int i = 0;
-                              i < filteredData.length;
-                              i++) ...[
-                            _PresensiRow(
-                              data: filteredData[i],
-                            ),
-                            if (i != filteredData.length - 1)
+                          for (int i = 0; i < rekap.length; i++) ...[
+                            _PresensiRow(data: rekap[i]),
+                            if (i != rekap.length - 1)
                               const SizedBox(height: 16),
                           ],
                         ],
@@ -364,11 +447,203 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     );
   }
 
-  TextStyle get _labelStyle =>
-      AppTextStyle.headingSmall.copyWith(
+  Widget _buildDropdown({
+    required String value,
+    required List<String> items,
+    required ValueChanged<String> onChanged,
+  }) {
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: value,
+        isExpanded: true,
+        icon: const Padding(
+          padding: EdgeInsets.only(right: 16),
+          child: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            size: 28,
+            color: Color(0xFF222222),
+          ),
+        ),
+        padding: const EdgeInsets.only(left: 34),
+        borderRadius: BorderRadius.circular(14),
+        style: _valueStyle,
+        items: items
+            .map((e) => DropdownMenuItem<String>(value: e, child: Text(e)))
+            .toList(),
+        onChanged: (v) {
+          if (v != null) onChanged(v);
+        },
+      ),
+    );
+  }
+
+  TextStyle get _labelStyle => AppTextStyle.headingSmall.copyWith(
         color: Colors.black,
         fontSize: 15,
       );
+
+  TextStyle get _valueStyle => AppTextStyle.bodyLarge.copyWith(
+        color: const Color(0xFF929292),
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      );
+}
+
+// Dialog pilihan filter waktu.
+class _FilterDialog extends StatelessWidget {
+  final String selected;
+  final List<String> opsiBulan;
+  final String Function(String) labelBulan;
+
+  const _FilterDialog({
+    required this.selected,
+    required this.opsiBulan,
+    required this.labelBulan,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          children: [
+            _opsi(context, 'Semua Bulan', 'semua'),
+            _opsi(context, 'Seminggu Lalu', 'minggu'),
+            _opsi(
+              context,
+              'Pilih Rentang Waktu',
+              'rentang',
+              icon: Icons.access_time,
+            ),
+            for (final key in opsiBulan) _opsi(context, labelBulan(key), key),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _opsi(
+    BuildContext context,
+    String label,
+    String value, {
+    IconData? icon,
+  }) {
+    final isSelected = selected == value;
+
+    return InkWell(
+      onTap: () => Navigator.pop(context, value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Color(0xFFE3E3E3), width: 1),
+          ),
+        ),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 18, color: Colors.black),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                label,
+                style: AppTextStyle.bodyLarge.copyWith(
+                  color: Colors.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              size: 22,
+              color: isSelected ? AppColors.primary : Colors.black,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Field tanggal kecil (Dari / Sampai).
+class _DateField extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTextStyle.bodyLarge.copyWith(
+            color: Colors.black,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Container(
+            width: 112,
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.14),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    style: AppTextStyle.bodyLarge.copyWith(
+                      color: const Color(0xFF222222),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: Color(0xFF222222),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // Input putih dengan bayangan.
@@ -397,64 +672,9 @@ class _InputSurface extends StatelessWidget {
   }
 }
 
-// Kartu statistik.
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String count;
-  final Color background;
-  final Color foreground;
-
-  const _StatCard({
-    required this.title,
-    required this.count,
-    required this.background,
-    required this.foreground,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 100,
-      padding: const EdgeInsets.symmetric(
-        vertical: 13,
-        horizontal: 2,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              title,
-              style: AppTextStyle.headingSmall.copyWith(
-                color: foreground,
-                fontSize: 15,
-              ),
-            ),
-          ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              count,
-              style: AppTextStyle.headingSmall.copyWith(
-                color: foreground,
-                fontSize: 17,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Baris daftar presensi per mata pelajaran.
+// Baris presensi per siswa.
 class _PresensiRow extends StatelessWidget {
-  final _PresensiMapel data;
+  final _RekapSiswa data;
 
   const _PresensiRow({required this.data});
 
@@ -471,15 +691,16 @@ class _PresensiRow extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Wrap(
-          spacing: 16,
-          runSpacing: 6,
-          children: [
-            _status('Hadir: ${data.hadir}'),
-            _status('Izin: ${data.izin}'),
-            _status('Sakit: ${data.sakit}'),
-            _status('Alpha: ${data.alpha}'),
-          ],
+        Padding(
+          padding: const EdgeInsets.only(left: 13),
+          child: Wrap(
+            spacing: 28,
+            runSpacing: 6,
+            children: [
+              _status('Hadir: ${data.hadir}'),
+              _status('Pulang: ${data.pulang}'),
+            ],
+          ),
         ),
       ],
     );
@@ -497,23 +718,28 @@ class _PresensiRow extends StatelessWidget {
   }
 }
 
-// Model data contoh.
-class _PresensiMapel {
+// Model data contoh (satu catatan per siswa per hari).
+class _CatatanPresensi {
   final String nama;
+  final String mapel;
   final String kelas;
-  final int hadir;
-  final int izin;
-  final int sakit;
-  final int alpha;
-  final String namaGuru;
+  final DateTime tanggal;
+  final bool pulang;
 
-  const _PresensiMapel({
+  const _CatatanPresensi({
     required this.nama,
+    required this.mapel,
     required this.kelas,
-    required this.hadir,
-    required this.izin,
-    required this.sakit,
-    required this.alpha,
-    required this.namaGuru,
+    required this.tanggal,
+    required this.pulang,
   });
+}
+
+// Hasil rekap per siswa.
+class _RekapSiswa {
+  final String nama;
+  int hadir = 0;
+  int pulang = 0;
+
+  _RekapSiswa(this.nama);
 }
