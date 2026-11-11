@@ -18,3 +18,14 @@ ios/Flutter/flutter_export_environment.sh
 
 # Local environment
 .env
+
+
+# File yang dihasilkan Flutter
+.flutter-plugins-dependencies
+**/generated_plugin_registrant.*
+**/GeneratedPluginRegistrant.*
+**/generated_plugins.cmake
+
+# Konfigurasi lokal Android
+android/local.properties
+android/**/buildOutputCleanup.lock
