@@ -50,11 +50,17 @@ class _LoginPageState extends State<LoginPage> {
     final user = _demoUsers[email];
     if (user != null && user['password'] == password) {
       authService.startDemoSession(user['role']!);
-    } else if (!authService.login(email, password)) {
-      setState(() => _isLoading = false);
-      _showMessage('Username/email atau password salah.');
-      return;
+    } else {
+      final success = await authService.login(email, password);
+      if (!mounted) return;
+      if (!success) {
+        setState(() => _isLoading = false);
+        _showMessage('Username/email atau password salah.');
+        return;
+      }
     }
+
+    if (!mounted) return;
 
     setState(() => _isLoading = false);
 

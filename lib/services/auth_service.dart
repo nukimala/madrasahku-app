@@ -1,4 +1,5 @@
 import '../models/admin_profile_model.dart';
+import 'api_client.dart';
 
 class AuthService {
   AuthService._();
@@ -35,38 +36,121 @@ class AuthService {
 
   _DemoAccount? _currentAccount;
 
-  String? get currentRole => _currentAccount?.role;
+  // Data pengguna aktif dari API
+  String? _currentUserRole;
+  String? _currentUserName;
+  String? _currentUserEmail;
+  String? _currentUsername;
+  String? _currentUserPhone;
+
+  String? get currentRole => _currentUserRole ?? _currentAccount?.role;
   String? get currentTeacherName =>
-      _currentAccount?.role == 'guru' ? 'Siti Nurhaliza' : null;
+      currentRole == 'guru' ? (_currentUserName ?? 'Guru Madrasah') : null;
+  String? get currentStudentName =>
+      currentRole == 'siswa' ? (_currentUserName ?? 'Siswa Madrasah') : null;
 
   AdminProfile get adminProfile => AdminProfile(
-    namaLengkap: _adminAccount.namaLengkap,
-    email: _adminAccount.email,
-    username: _adminAccount.username,
-    nomorTelepon: _adminAccount.nomorTelepon,
+    namaLengkap: _currentUserName ?? _adminAccount.namaLengkap,
+    email: _currentUserEmail ?? _adminAccount.email,
+    username: _currentUsername ?? _adminAccount.username,
+    nomorTelepon: _currentUserPhone ?? _adminAccount.nomorTelepon,
   );
 
-  bool login(String identifier, String password) {
-    final normalizedIdentifier = identifier.trim().toLowerCase();
-    if ((_adminAccount.email.toLowerCase() == normalizedIdentifier ||
-            _adminAccount.username.toLowerCase() == normalizedIdentifier) &&
+  /// Login fleksibel: Coba REST API live dulu, fallback ke demo in-memory jika offline
+  Future<bool> login(String identifier, String password) async {
+    final normalized = identifier.trim().toLowerCase();
+
+    // 1. Panggil REST API live /auth/login
+    try {
+      final res = await ApiClient.instance.post(
+        '/auth/login',
+        body: {
+          'identifier': identifier.trim(),
+          'password': password,
+          'device_name': 'Aplikasi Madrasahku Mobile',
+          'platform': 'android',
+        },
+      );
+
+      if (res.success && res.data != null) {
+        final tokens = res.data['tokens'];
+        final userData = res.data['user'];
+
+        if (tokens != null) {
+          ApiClient.instance.setTokens(
+            accessToken: tokens['access_token'] ?? '',
+            refreshToken: tokens['refresh_token'] ?? '',
+          );
+        }
+
+        if (userData != null) {
+          _currentUserRole = (userData['role'] ?? '').toString().toLowerCase();
+          _currentUserName = userData['name'] ?? '';
+          _currentUserEmail = userData['email'] ?? '';
+          _currentUsername = userData['username'] ?? '';
+        }
+
+        // Sinkronisasi data detail profil /me
+        await fetchMe();
+        return true;
+      }
+    } catch (_) {}
+
+    // 2. Fallback akun demo offline jika API tidak terjangkau
+    if ((_adminAccount.email.toLowerCase() == normalized ||
+            _adminAccount.username.toLowerCase() == normalized) &&
         _adminAccount.password == password) {
       _currentAccount = _adminAccount;
+      _currentUserRole = 'admin';
+      _currentUserName = _adminAccount.namaLengkap;
       return true;
+    }
+
+    for (final account in _otherAccounts) {
+      if ((account.email.toLowerCase() == normalized ||
+              account.username.toLowerCase() == normalized) &&
+          account.password == password) {
+        _currentAccount = account;
+        _currentUserRole = account.role;
+        _currentUserName = account.namaLengkap;
+        return true;
+      }
     }
 
     return false;
   }
 
+  /// Ambil profil detail pengguna dari /me
+  Future<bool> fetchMe() async {
+    try {
+      final res = await ApiClient.instance.get('/me');
+      if (res.success && res.data != null && res.data['user'] != null) {
+        final u = res.data['user'];
+        _currentUserRole = (u['role'] ?? _currentUserRole ?? '').toString().toLowerCase();
+        _currentUserName = u['name'] ?? _currentUserName;
+        _currentUserEmail = u['email'] ?? _currentUserEmail;
+        _currentUsername = u['username'] ?? _currentUsername;
+        if (u['profile'] is Map) {
+          _currentUserPhone = u['profile']['phone'] ?? u['profile']['no_hp'];
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   void startDemoSession(String role) {
+    _currentUserRole = role;
     if (role == 'admin') {
       _currentAccount = _adminAccount;
+      _currentUserName = _adminAccount.namaLengkap;
       return;
     }
 
     for (final account in _otherAccounts) {
       if (account.role == role) {
         _currentAccount = account;
+        _currentUserName = account.namaLengkap;
         return;
       }
     }
@@ -75,7 +159,7 @@ class AuthService {
   }
 
   bool updateAdminProfile(AdminProfile profile) {
-    if (_currentAccount != _adminAccount) return false;
+    if (currentRole != 'admin') return false;
 
     final email = profile.email.trim().toLowerCase();
     final username = profile.username.trim().toLowerCase();
@@ -93,6 +177,11 @@ class AuthService {
       ..username = username
       ..namaLengkap = profile.namaLengkap.trim()
       ..nomorTelepon = profile.nomorTelepon.trim();
+
+    _currentUserName = profile.namaLengkap.trim();
+    _currentUserEmail = email;
+    _currentUsername = username;
+    _currentUserPhone = profile.nomorTelepon.trim();
     return true;
   }
 
@@ -108,8 +197,19 @@ class AuthService {
     return true;
   }
 
-  void logout() {
+  Future<void> logout() async {
+    try {
+      if (ApiClient.instance.accessToken != null) {
+        await ApiClient.instance.post('/auth/logout');
+      }
+    } catch (_) {}
     _currentAccount = null;
+    _currentUserRole = null;
+    _currentUserName = null;
+    _currentUserEmail = null;
+    _currentUsername = null;
+    _currentUserPhone = null;
+    ApiClient.instance.clearTokens();
   }
 }
 

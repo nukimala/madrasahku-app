@@ -107,3 +107,50 @@ List<TopikTugas> contohTopikTugas() {
     TopikTugas(minggu: 4, nama: 'Desimal', kelas: 'Kelas VIII A', mapel: 'Matematika'),
   ];
 }
+
+class TugasItem {
+  final int id;
+  final String publicId;
+  final String title;
+  final String? instructions;
+  final String deadline;
+  final String subjectName;
+  final String className;
+  final String teacherName;
+  final bool isSubmitted;
+  final int? score;
+  final String? teacherFeedback;
+
+  const TugasItem({
+    required this.id,
+    required this.publicId,
+    required this.title,
+    this.instructions,
+    required this.deadline,
+    required this.subjectName,
+    required this.className,
+    required this.teacherName,
+    this.isSubmitted = false,
+    this.score,
+    this.teacherFeedback,
+  });
+
+  factory TugasItem.fromJson(Map<String, dynamic> json) {
+    final sub = json['my_submission'];
+    return TugasItem(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      publicId: json['public_id'] ?? json['id']?.toString() ?? '',
+      title: json['title'] ?? '',
+      instructions: json['instructions'],
+      deadline: json['deadline'] ?? '',
+      subjectName: json['subject_name'] ?? '',
+      className: json['class_name'] ?? '',
+      teacherName: json['teacher_name'] ?? '',
+      isSubmitted: sub != null,
+      score: sub is Map && sub['score'] != null
+          ? int.tryParse(sub['score'].toString())
+          : null,
+      teacherFeedback: sub is Map ? sub['teacher_feedback']?.toString() : null,
+    );
+  }
+}

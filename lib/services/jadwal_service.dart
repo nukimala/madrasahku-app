@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/jadwal_model.dart';
+import 'api_client.dart';
 
 class JadwalService {
   JadwalService._();
@@ -135,6 +136,56 @@ class JadwalService {
       ..clear()
       ..addAll(updatedYears);
     return true;
+  }
+
+  /// Ambil jadwal live dari REST API backend `/schedules`
+  Future<List<JadwalPelajaran>> ambilJadwalApi({int? hari}) async {
+    final params = <String, String>{};
+    if (hari != null) params['day'] = hari.toString();
+
+    final res = await ApiClient.instance.get('/schedules', queryParams: params);
+
+    if (res.success && res.data != null && res.data['schedules'] is List) {
+      final list = res.data['schedules'] as List;
+      final result = list.map((item) => _parseJadwalJson(item)).toList();
+      result.sort(_compareTime);
+      return result;
+    }
+
+    return [];
+  }
+
+  JadwalPelajaran _parseJadwalJson(dynamic json) {
+    int parseMenit(String? timeStr) {
+      if (timeStr == null || !timeStr.contains(':')) return 0;
+      final parts = timeStr.split(':');
+      return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    }
+
+    HariSekolah parseHari(dynamic h) {
+      final str = h.toString().toLowerCase();
+      if (str.contains('senin') || str == '1') return HariSekolah.senin;
+      if (str.contains('selasa') || str == '2') return HariSekolah.selasa;
+      if (str.contains('rabu') || str == '3') return HariSekolah.rabu;
+      if (str.contains('kamis') || str == '4') return HariSekolah.kamis;
+      if (str.contains('jumat') || str == '5') return HariSekolah.jumat;
+      return HariSekolah.sabtu;
+    }
+
+    return JadwalPelajaran(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      tahunAjaran: json['academic_year'] ?? '2026/2027',
+      semester: (json['semester'] == '2' || json['semester'] == 'genap')
+          ? Semester.genap
+          : Semester.ganjil,
+      kelas: json['class_name'] ?? json['kelas'] ?? '',
+      hari: parseHari(json['day_name'] ?? json['day_of_week']),
+      mulaiMenit: parseMenit(json['start_time']),
+      selesaiMenit: parseMenit(json['end_time']),
+      mataPelajaran: json['subject_name'] ?? json['mapel'] ?? '',
+      guru: json['teacher_name'] ?? json['guru'] ?? '',
+      ruang: json['room'] ?? 'Ruang Kelas',
+    );
   }
 
   List<JadwalPelajaran> semuaJadwal({
