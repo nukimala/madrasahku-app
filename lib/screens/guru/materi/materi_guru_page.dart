@@ -6,13 +6,57 @@ import '../../../utilis/app_text_style.dart';
 import 'tambah_materi_page.dart';
 import 'tambah_tugas_page.dart';
 
-// MODEL SEMENTARA 
+import 'edit_materi_page.dart';
+import 'edit_tugas_page.dart';
+
+// =====================================================================
+// MODEL SEMENTARA
+// =====================================================================
 class _Item {
   final String judul;
   final String sub;
   final bool isTugas;
 
-  _Item({required this.judul, this.sub = '', this.isTugas = false});
+  // Data mentah untuk edit.
+  final String deskripsi;
+  final String? namaFile;
+  final DateTime? mulai;    // hanya tugas
+  final DateTime? deadline; // hanya tugas
+  final String? jenis;      // hanya tugas
+
+  _Item({
+    required this.judul,
+    this.sub = '',
+    this.isTugas = false,
+    this.deskripsi = '',
+    this.namaFile,
+    this.mulai,
+    this.deadline,
+    this.jenis,
+  });
+
+  _Item copyWith({
+    String? judul,
+    String? sub,
+    bool? isTugas,
+    String? deskripsi,
+    String? namaFile,
+    DateTime? mulai,
+    DateTime? deadline,
+    String? jenis,
+    bool hapusFile = false,
+  }) {
+    return _Item(
+      judul: judul ?? this.judul,
+      sub: sub ?? this.sub,
+      isTugas: isTugas ?? this.isTugas,
+      deskripsi: deskripsi ?? this.deskripsi,
+      namaFile: hapusFile ? null : (namaFile ?? this.namaFile),
+      mulai: mulai ?? this.mulai,
+      deadline: deadline ?? this.deadline,
+      jenis: jenis ?? this.jenis,
+    );
+  }
 }
 
 class _Topik {
@@ -31,7 +75,9 @@ class _Topik {
   String get judul => 'Minggu $minggu - $nama';
 }
 
+// =====================================================================
 // HALAMAN MATERI GURU
+// =====================================================================
 class MateriGuruPage extends StatefulWidget {
   const MateriGuruPage({super.key});
 
@@ -63,16 +109,14 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   String _mapel = 'Matematika';
   String _query = '';
 
-  // Topik yang sedang terbuka (berdasarkan index).
   final Set<_Topik> _terbuka = {};
-
   final List<_Topik> _topik = [];
 
   @override
   void initState() {
     super.initState();
 
-    // Data contoh, hapus kalau sudah pakai data asli.
+    // Data contoh — hapus kalau sudah pakai data asli.
     final contoh = _Topik(
       minggu: 1,
       nama: 'Kurva',
@@ -81,11 +125,18 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
         _Item(
           judul: 'Persamaan Linear',
           sub: 'Silahkan dipelajari materi berikut',
+          deskripsi: 'Silahkan dipelajari materi berikut',
+          namaFile: 'materi_contoh.pdf',
         ),
         _Item(
           judul: 'Persamaan Linear',
-          sub: 'Deadline: 11 Des 2026, 23.59',
+          sub: 'Deadline: 11/12/2026, 23.59',
           isTugas: true,
+          deskripsi: 'Kerjakan soal halaman 10',
+          namaFile: 'tugas_contoh.pdf',
+          mulai: DateTime(2026, 12, 4, 7, 0),
+          deadline: DateTime(2026, 12, 11, 23, 59),
+          jenis: 'Individu',
         ),
       ],
     );
@@ -112,13 +163,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     }).toList();
   }
 
-  void _snack(String pesan) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(pesan)));
-  }
-
+  // -------------------------------------------------------------------
   // TAMBAH TOPIK
+  // -------------------------------------------------------------------
   Future<void> _tambahTopik() async {
     final hasil = await showDialog<_Topik>(
       context: context,
@@ -133,7 +180,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     });
   }
 
+  // -------------------------------------------------------------------
   // CARD KECIL: UPLOAD MATERI / UPLOAD TUGAS
+  // -------------------------------------------------------------------
   void _pilihJenisUpload(_Topik topik) {
     showDialog<void>(
       context: context,
@@ -163,7 +212,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                       label: 'Upload Materi',
                       onTap: () {
                         Navigator.pop(ctx);
-
                         _bukaTambahMateri(topik);
                       },
                     ),
@@ -177,7 +225,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                       warna: const Color(0xFF2F80ED),
                       label: 'Upload Tugas',
                       onTap: () {
-                                               Navigator.pop(ctx);
+                        Navigator.pop(ctx);
                         _bukaTambahTugas(topik);
                       },
                     ),
@@ -191,8 +239,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
   }
 
-
+  // -------------------------------------------------------------------
   // BUKA HALAMAN TAMBAH MATERI
+  // -------------------------------------------------------------------
   Future<void> _bukaTambahMateri(_Topik topik) async {
     final hasil = await Navigator.push<MateriBaru>(
       context,
@@ -214,13 +263,17 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
           sub: hasil.deskripsi.isNotEmpty
               ? hasil.deskripsi
               : (hasil.namaFile ?? ''),
+          deskripsi: hasil.deskripsi,
+          namaFile: hasil.namaFile,
         ),
       );
       _terbuka.add(topik);
     });
   }
 
-    // BUKA HALAMAN TAMBAH TUGAS
+  // -------------------------------------------------------------------
+  // BUKA HALAMAN TAMBAH TUGAS
+  // -------------------------------------------------------------------
   Future<void> _bukaTambahTugas(_Topik topik) async {
     final hasil = await Navigator.push<TugasBaru>(
       context,
@@ -245,13 +298,112 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
               '${d.hour.toString().padLeft(2, '0')}.'
               '${d.minute.toString().padLeft(2, '0')}',
           isTugas: true,
+          deskripsi: hasil.deskripsi,
+          namaFile: hasil.namaFile,
+          mulai: hasil.mulai,
+          deadline: hasil.deadline,
+          jenis: hasil.jenis,
         ),
       );
       _terbuka.add(topik);
     });
   }
 
+  // -------------------------------------------------------------------
+  // BUKA HALAMAN EDIT MATERI
+  // -------------------------------------------------------------------
+  Future<void> _bukaEditMateri(_Topik topik, _Item item) async {
+    final hasil = await Navigator.push<MateriBaru>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditMateriPage(
+          topik: topik.judul,
+          kelas: _kelas,
+          mapel: _mapel,
+          judulAwal: item.judul,
+          deskripsiAwal: item.deskripsi,
+          namaFileAwal: item.namaFile,
+        ),
+      ),
+    );
+
+    if (hasil == null || !mounted) return;
+
+    setState(() {
+      final i = topik.items.indexOf(item);
+      if (i == -1) return;
+
+      // Tandai kalau user memang menghapus file (dari ada → null).
+      final hapusFile = item.namaFile != null && hasil.namaFile == null;
+
+      topik.items[i] = item.copyWith(
+        judul: hasil.judul,
+        deskripsi: hasil.deskripsi,
+        namaFile: hasil.namaFile,
+        hapusFile: hapusFile,
+        sub: hasil.deskripsi.isNotEmpty
+            ? hasil.deskripsi
+            : (hasil.namaFile ?? ''),
+      );
+      _terbuka.add(topik);
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // BUKA HALAMAN EDIT TUGAS
+  // -------------------------------------------------------------------
+  Future<void> _bukaEditTugas(_Topik topik, _Item item) async {
+    // Fallback kalau data mentah belum ada (misal data contoh lama).
+    final mulaiAwal = item.mulai ?? DateTime.now();
+    final deadlineAwal =
+        item.deadline ?? DateTime.now().add(const Duration(days: 1));
+
+    final hasil = await Navigator.push<TugasBaru>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditTugasPage(
+          topik: topik.judul,
+          kelas: _kelas,
+          mapel: _mapel,
+          judulAwal: item.judul,
+          deskripsiAwal: item.deskripsi,
+          mulaiAwal: mulaiAwal,
+          deadlineAwal: deadlineAwal,
+          jenisAwal: item.jenis ?? 'Individu',
+          namaFileAwal: item.namaFile,
+        ),
+      ),
+    );
+
+    if (hasil == null || !mounted) return;
+
+    final d = hasil.deadline;
+
+    setState(() {
+      final i = topik.items.indexOf(item);
+      if (i == -1) return;
+
+      final hapusFile = item.namaFile != null && hasil.namaFile == null;
+
+      topik.items[i] = item.copyWith(
+        judul: hasil.judul,
+        deskripsi: hasil.deskripsi,
+        namaFile: hasil.namaFile,
+        hapusFile: hapusFile,
+        mulai: hasil.mulai,
+        deadline: hasil.deadline,
+        jenis: hasil.jenis,
+        sub: 'Deadline: ${d.day}/${d.month}/${d.year}, '
+            '${d.hour.toString().padLeft(2, '0')}.'
+            '${d.minute.toString().padLeft(2, '0')}',
+      );
+      _terbuka.add(topik);
+    });
+  }
+
+  // -------------------------------------------------------------------
   // HAPUS ITEM
+  // -------------------------------------------------------------------
   Future<void> _hapusItem(_Topik topik, _Item item) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -279,7 +431,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     }
   }
 
+  // -------------------------------------------------------------------
   // BUILD
+  // -------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final daftar = _hasil;
@@ -298,7 +452,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
               const SizedBox(height: 14),
 
-              // Filter kelas dan mata pelajaran.
               Row(
                 children: [
                   Expanded(
@@ -308,9 +461,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                       onChanged: (v) => setState(() => _kelas = v),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: _Dropdown(
                       value: _mapel,
@@ -323,7 +474,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
               const SizedBox(height: 12),
 
-              // Kolom cari.
               _Kotak(
                 child: TextField(
                   onChanged: (v) => setState(() => _query = v.trim()),
@@ -340,7 +490,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
               const SizedBox(height: 12),
 
-              // Daftar topik.
               Expanded(
                 child: daftar.isEmpty
                     ? Center(
@@ -387,7 +536,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
   }
 
+  // -------------------------------------------------------------------
   // CARD TOPIK
+  // -------------------------------------------------------------------
   Widget _buildTopik(_Topik t) {
     final terbuka = _terbuka.contains(t) || _query.isNotEmpty;
 
@@ -399,7 +550,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       ),
       child: Column(
         children: [
-          // Header topik.
           InkWell(
             onTap: () => setState(() {
               terbuka ? _terbuka.remove(t) : _terbuka.add(t);
@@ -424,8 +574,6 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                     ],
                   ),
                 ),
-
-                // Saat terbuka: ikon tambah. Saat tertutup: panah.
                 if (terbuka)
                   GestureDetector(
                     onTap: () => _pilihJenisUpload(t),
@@ -456,7 +604,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
   }
 
+  // -------------------------------------------------------------------
   // ITEM MATERI / TUGAS DI DALAM TOPIK
+  // -------------------------------------------------------------------
   Widget _buildItem(_Topik t, _Item item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -494,13 +644,21 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
             ),
           ),
 
+          // EDIT
           InkWell(
-            onTap: () => _snack('Edit menyusul'),
+            onTap: () {
+              if (item.isTugas) {
+                _bukaEditTugas(t, item);
+              } else {
+                _bukaEditMateri(t, item);
+              }
+            },
             child: const Icon(Icons.edit_outlined, size: 20),
           ),
 
           const SizedBox(width: 10),
 
+          // HAPUS
           InkWell(
             onTap: () => _hapusItem(t, item),
             child: const Icon(Icons.delete_outline, size: 20),
@@ -511,7 +669,9 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   }
 }
 
+// =====================================================================
 // DIALOG TAMBAH TOPIK
+// =====================================================================
 class _TambahTopikDialog extends StatefulWidget {
   const _TambahTopikDialog();
 
@@ -600,9 +760,7 @@ class _TambahTopikDialogState extends State<_TambahTopikDialog> {
                   'Minggu ke -',
                   style: AppTextStyle.headingSmall.copyWith(fontSize: 16),
                 ),
-
                 const SizedBox(width: 12),
-
                 SizedBox(
                   width: 70,
                   child: _Kotak(
@@ -655,9 +813,7 @@ class _TambahTopikDialogState extends State<_TambahTopikDialog> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 10),
-
                 Expanded(
                   flex: 2,
                   child: InkWell(
@@ -708,7 +864,9 @@ class _TambahTopikDialogState extends State<_TambahTopikDialog> {
   }
 }
 
+// =====================================================================
 // WIDGET KECIL PENDUKUNG
+// =====================================================================
 
 class _Label extends StatelessWidget {
   final String text;
