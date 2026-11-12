@@ -25,6 +25,7 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
   HariSekolah? _filterHari;
   String? _filterKelas;
   _TampilanJadwal _tampilan = _TampilanJadwal.daftar;
+  bool _isDeletingAll = false;
 
   @override
   void dispose() {
@@ -54,6 +55,7 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
     final tahunAjaran = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
         title: Text('Tambah tahun ajaran', style: AppTextStyle.headingSmall),
         content: Form(
           key: formKey,
@@ -186,6 +188,7 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
         title: Text('Hapus jadwal?', style: AppTextStyle.headingSmall),
         content: Text(
           '${jadwal.mataPelajaran} · ${jadwal.hari.label} · '
@@ -214,6 +217,54 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
       if (mounted) setState(() {});
     } catch (error) {
       if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Jadwal gagal dihapus: $error')));
+    }
+  }
+
+  Future<void> _hapusSemuaJadwal() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
+        title: Text('Hapus semua jadwal?', style: AppTextStyle.headingSmall),
+        content: const Text(
+          'Semua jadwal dari seluruh tahun ajaran dan semester akan dihapus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Hapus semua',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeletingAll = true);
+    try {
+      final deleted = await JadwalService.instance.hapusSemua();
+      if (!mounted) return;
+      setState(() {
+        _isDeletingAll = false;
+        _filterHari = null;
+        _filterKelas = null;
+        _searchController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$deleted jadwal berhasil dihapus.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isDeletingAll = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Jadwal gagal dihapus: $error')));
@@ -273,6 +324,17 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
             icon: const Icon(Icons.upload_file_outlined, size: 18),
             label: const Text('Impor'),
           ),
+          if (JadwalService.instance.jumlahJadwalTersimpan > 0)
+            IconButton(
+              tooltip: 'Hapus semua jadwal',
+              onPressed: _isDeletingAll ? null : _hapusSemuaJadwal,
+              icon: _isDeletingAll
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.delete_sweep_outlined),
+            ),
           IconButton(
             tooltip: 'Tambah jadwal',
             onPressed: _openForm,

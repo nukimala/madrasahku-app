@@ -28,6 +28,7 @@ class _PratinjauImporJadwalPageState extends State<PratinjauImporJadwalPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
         title: const Text('Ganti jadwal?'),
         content: Text(
           'Jadwal ${widget.hasil.tahunAjaran} · ${widget.hasil.semester.label} '

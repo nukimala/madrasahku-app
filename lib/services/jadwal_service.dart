@@ -76,6 +76,8 @@ class JadwalService {
     ..._jadwal.map((item) => item.tahunAjaran),
   }.toList()..sort(_compareSchoolYear);
 
+  int get jumlahJadwalTersimpan => _jadwal.length;
+
   Future<void> load() async {
     if (_loaded) return;
 
@@ -247,6 +249,14 @@ class JadwalService {
     final schedules = _jadwal.where((item) => item.id != id).toList();
     if (schedules.length == _jadwal.length) return;
     await _save(schedules);
+  }
+
+  Future<int> hapusSemua() async {
+    _ensureLoaded();
+    final deleted = _jadwal.length;
+    if (deleted == 0) return 0;
+    await _save([]);
+    return deleted;
   }
 
   Future<JadwalSalinHasil> salinHari({

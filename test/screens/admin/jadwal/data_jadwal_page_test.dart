@@ -61,4 +61,50 @@ void main() {
     expect(find.text('2030/2031'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('admin can delete all schedules from the schedule page', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final service = JadwalService.instance;
+    await service.load();
+    await service.gantiJadwal(
+      tahunAjaran: '2026/2027',
+      semester: Semester.ganjil,
+      jadwalBaru: const [
+        JadwalPelajaran(
+          id: 0,
+          tahunAjaran: '2026/2027',
+          semester: Semester.ganjil,
+          hari: HariSekolah.senin,
+          mulaiMenit: 420,
+          selesaiMenit: 460,
+          mataPelajaran: 'Matematika',
+          guru: 'Guru Matematika',
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(const MaterialApp(home: DataJadwalPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Hapus semua jadwal'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<AlertDialog>(find.byType(AlertDialog)).backgroundColor,
+      Colors.white,
+    );
+    expect(
+      find.text(
+        'Semua jadwal dari seluruh tahun ajaran dan semester akan dihapus.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Hapus semua'));
+    await tester.pumpAndSettle();
+
+    expect(service.jumlahJadwalTersimpan, 0);
+    expect(find.text('1 jadwal berhasil dihapus.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

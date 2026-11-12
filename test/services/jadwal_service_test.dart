@@ -246,4 +246,36 @@ void main() {
       auth.logout();
     },
   );
+
+  test('deletes schedules across all years and semesters', () async {
+    const anotherYear = '2091/2092';
+    final bulkSchedule = schedule(
+      className: 'Bulk delete',
+      day: HariSekolah.jumat,
+      start: 900,
+      end: 940,
+      teacher: 'Bulk delete teacher',
+      room: 'Bulk delete room',
+    );
+    expect(await service.simpan(bulkSchedule), isNull);
+    expect(
+      await service.simpan(
+        bulkSchedule.copyWith(
+          id: 0,
+          tahunAjaran: anotherYear,
+          semester: Semester.genap,
+        ),
+      ),
+      isNull,
+    );
+    final total = service.jumlahJadwalTersimpan;
+
+    expect(await service.hapusSemua(), total);
+    expect(service.jumlahJadwalTersimpan, 0);
+    expect(
+      (await SharedPreferences.getInstance()).getString('jadwal_pelajaran_v1'),
+      '[]',
+    );
+    expect(await service.hapusSemua(), 0);
+  });
 }
