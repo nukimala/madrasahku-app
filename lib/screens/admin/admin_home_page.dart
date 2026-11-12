@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 import '../../services/auth_service.dart';
+import '../auth/login_page.dart';
 import 'kelas/data_kelas_page.dart';
 import 'guru/data_guru_page.dart';
 import 'mapel/data_mapel_page.dart';
@@ -25,6 +26,14 @@ class _AdminHomePageState extends State<AdminHomePage> {
       MaterialPageRoute(builder: (_) => const AdminProfilePage()),
     );
     if (mounted) setState(() {});
+  }
+
+  void _logout() {
+    AuthService.instance.logout();
+    Navigator.of(context).pushAndRemoveUntil<void>(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (_) => false,
+    );
   }
 
   @override
@@ -93,6 +102,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout, size: 16),
+                    label: const Text('Logout'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: AppColors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      minimumSize: const Size(0, 38),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
