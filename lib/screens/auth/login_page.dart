@@ -47,13 +47,15 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     final authService = AuthService.instance;
-    final user = _demoUsers[email];
-    if (user != null && user['password'] == password) {
-      authService.startDemoSession(user['role']!);
-    } else {
-      final success = await authService.login(email, password);
-      if (!mounted) return;
-      if (!success) {
+    // Coba login via REST API live database terlebih dahulu
+    final success = await authService.login(email, password);
+    if (!mounted) return;
+    if (!success) {
+      // Jika akun demo offline cocok, gunakan demo
+      final user = _demoUsers[email];
+      if (user != null && user['password'] == password) {
+        authService.startDemoSession(user['role']!);
+      } else {
         setState(() => _isLoading = false);
         _showMessage('Username/email atau password salah.');
         return;
