@@ -1,6 +1,7 @@
 import 'package:geolocator/geolocator.dart';
 import '../models/presensi_model.dart';
 import 'api_client.dart';
+import 'auth_service.dart';
 
 /// Service presensi guru yang terhubung ke REST API & database.
 class PresensiService {
@@ -314,9 +315,10 @@ class PresensiService {
   /// Ambil riwayat presensi bulanan dari API `/attendance/history`
   Future<List<dynamic>> ambilRiwayatApi({int? bulan, int? tahun}) async {
     final now = DateTime.now();
+    final b = (bulan ?? now.month).toString().padLeft(2, '0');
+    final t = (tahun ?? now.year).toString();
     final query = {
-      'month': (bulan ?? now.month).toString(),
-      'year': (tahun ?? now.year).toString(),
+      'month': '$t-$b',
     };
 
     final res = await ApiClient.instance.get(
@@ -324,8 +326,9 @@ class PresensiService {
       queryParams: query,
     );
 
-    if (res.success && res.data != null && res.data['history'] is List) {
-      return res.data['history'];
+    if (res.success && res.data != null) {
+      if (res.data['items'] is List) return res.data['items'];
+      if (res.data['history'] is List) return res.data['history'];
     }
     return [];
   }

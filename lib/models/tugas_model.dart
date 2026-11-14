@@ -67,47 +67,6 @@ class TopikTugas {
   String get judul => 'Minggu $minggu - $nama';
 }
 
-List<TopikTugas> contohTopikTugas() {
-  final deadline = DateTime(2026, 12, 11, 23, 59);
-
-  return [
-    TopikTugas(
-      minggu: 1,
-      nama: 'Persamaan Linear',
-      kelas: 'Kelas VIII A',
-      mapel: 'Matematika',
-      tugas: [
-        TugasGuru(
-          judul: 'Persamaan Linear',
-          deadline: deadline,
-          siswa: [
-            SiswaTugas(nama: 'Shofi maulana Shofa', waktuKumpul: DateTime(2026, 12, 12, 10, 12)),
-            SiswaTugas(nama: 'Dinda Febiola', waktuKumpul: DateTime(2026, 12, 11, 10, 12)),
-            SiswaTugas(nama: 'Repaldtt', waktuKumpul: DateTime(2026, 12, 12, 8, 30)),
-            SiswaTugas(nama: 'Afif Ramdhani', waktuKumpul: DateTime(2026, 12, 10, 10, 12)),
-            SiswaTugas(nama: 'Adam Ridho', waktuKumpul: DateTime(2026, 12, 10, 9, 0)),
-            SiswaTugas(nama: 'Angello Eriya', waktuKumpul: DateTime(2026, 12, 12, 9, 15)),
-            SiswaTugas(nama: 'Etnis Supraaaa', waktuKumpul: DateTime(2026, 12, 13, 7, 45)),
-            SiswaTugas(nama: 'Ryan', waktuKumpul: DateTime(2026, 12, 11, 12, 0)),
-            SiswaTugas(nama: 'Shulki'),
-          ],
-        ),
-        TugasGuru(
-          judul: 'Persamaan Parabola',
-          deadline: deadline,
-          siswa: [
-            SiswaTugas(nama: 'Dinda Febiola', waktuKumpul: DateTime(2026, 12, 11, 9, 0)),
-            SiswaTugas(nama: 'Adam Ridho'),
-            SiswaTugas(nama: 'Shulki'),
-          ],
-        ),
-      ],
-    ),
-    TopikTugas(minggu: 3, nama: 'FPB dan KPK', kelas: 'Kelas VIII A', mapel: 'Matematika'),
-    TopikTugas(minggu: 4, nama: 'Desimal', kelas: 'Kelas VIII A', mapel: 'Matematika'),
-  ];
-}
-
 class TugasItem {
   final int id;
   final String publicId;

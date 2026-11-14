@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/presensi_service.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
@@ -46,8 +47,6 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     'Kelas IX B',
   ];
 
-  static const List<String> _daftarSiswa = ['Mustofa', 'Said', 'Subiyanti'];
-
   // Nilai yang sedang dipilih di form.
   String _selectedFilter = _semua;
   String _selectedMapel = 'Matematika';
@@ -83,37 +82,35 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
       return _bulanKey(d);
     });
 
-    _catatan = _buatDataContoh(today);
+    _catatan = [];
+    _muatDataApi();
   }
 
-  // Data contoh untuk tampilan. Ganti dengan data dari API / database.
-  List<_CatatanPresensi> _buatDataContoh(DateTime today) {
-    final hasil = <_CatatanPresensi>[];
-
-    for (final mapel in _mataPelajaran) {
-      for (final kelas in _daftarKelas) {
-        for (var s = 0; s < _daftarSiswa.length; s++) {
-          for (var hari = 0; hari < 330; hari++) {
-            final tanggal = today.subtract(Duration(days: hari));
-            if (tanggal.weekday == DateTime.saturday ||
-                tanggal.weekday == DateTime.sunday) {
-              continue;
+  Future<void> _muatDataApi() async {
+    try {
+      final history = await PresensiService.instance.ambilRiwayatApi();
+      if (history.isNotEmpty && mounted) {
+        setState(() {
+          _catatan.clear();
+          for (final item in history) {
+            if (item is Map) {
+              final dStr = item['date'] ?? item['attendance_date'];
+              final tgl = dStr != null ? DateTime.tryParse(dStr.toString()) : null;
+              final guruName = item['teacher_name'] ?? item['teacher'] ?? 'Guru';
+              if (tgl != null) {
+                _catatan.add(_CatatanPresensi(
+                  nama: guruName.toString(),
+                  mapel: 'Umum',
+                  kelas: 'Semua',
+                  tanggal: tgl,
+                  pulang: item['check_out_at'] != null,
+                ));
+              }
             }
-            final pulang = (hari + s * 3) % 13 == 0;
-            hasil.add(
-              _CatatanPresensi(
-                nama: _daftarSiswa[s],
-                mapel: mapel,
-                kelas: kelas,
-                tanggal: tanggal,
-                pulang: pulang,
-              ),
-            );
           }
-        }
+        });
       }
-    }
-    return hasil;
+    } catch (_) {}
   }
 
   String _bulanKey(DateTime d) =>

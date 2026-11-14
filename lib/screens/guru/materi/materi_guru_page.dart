@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/materi_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -115,41 +116,36 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   @override
   void initState() {
     super.initState();
+    _muatMateriApi();
+  }
 
-    // Data contoh — hapus kalau sudah pakai data asli.
-    final contoh = _Topik(
-      minggu: 1,
-      nama: 'Kurva',
-      waktu: DateTime(2026, 11, 3, 7, 0),
-      items: [
-        _Item(
-          judul: 'Persamaan Linear',
-          sub: 'Silahkan dipelajari materi berikut',
-          deskripsi: 'Silahkan dipelajari materi berikut',
-          namaFile: 'materi_contoh.pdf',
-        ),
-        _Item(
-          judul: 'Persamaan Linear',
-          sub: 'Deadline: 11/12/2026, 23.59',
-          isTugas: true,
-          deskripsi: 'Kerjakan soal halaman 10',
-          namaFile: 'tugas_contoh.pdf',
-          mulai: DateTime(2026, 12, 4, 7, 0),
-          deadline: DateTime(2026, 12, 11, 23, 59),
-          jenis: 'Individu',
-        ),
-      ],
-    );
-
-    _topik.add(contoh);
-    _terbuka.add(contoh);
-
-    _topik.add(
-      _Topik(minggu: 3, nama: 'FPB dan KPK', waktu: DateTime(2026, 11, 17)),
-    );
-    _topik.add(
-      _Topik(minggu: 4, nama: 'Desimal', waktu: DateTime(2026, 11, 24)),
-    );
+  Future<void> _muatMateriApi() async {
+    try {
+      final items = await MateriService.instance.ambilDaftarMateri();
+      if (mounted) {
+        setState(() {
+          _topik.clear();
+          for (var i = 0; i < items.length; i++) {
+            final m = items[i];
+            final t = _Topik(
+              minggu: i + 1,
+              nama: m.title,
+              waktu: DateTime.tryParse(m.createdAt) ?? DateTime.now(),
+              items: [
+                _Item(
+                  judul: m.title,
+                  sub: m.description ?? 'Materi ${m.subjectName}',
+                  deskripsi: m.description ?? '',
+                  namaFile: m.fileUrl,
+                ),
+              ],
+            );
+            _topik.add(t);
+            _terbuka.add(t);
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   // Filter pencarian.

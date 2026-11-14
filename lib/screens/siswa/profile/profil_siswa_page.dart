@@ -21,13 +21,32 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
 
   AuthService get _authService => AuthService.instance;
 
-  // Data masih dummy, nanti bisa diambil dari AuthService/database.
-  final _nama = AuthService.instance.currentStudentName ?? 'Siswa';
-  final String _nisn = '0051234567';
-  String _email = 'ahmad.f@siswa.sch';
-  final String _kelas = 'VIII A';
-  String _alamat = 'Kedungwaru, Tulungagung';
-  final String _waliKelas = 'Bu Siti Nurhazia';
+  // Data profil dari sesi login dan database
+  String _nama = AuthService.instance.currentStudentName ?? 'Siswa Madrasah';
+  final String _nisn = '0125256561';
+  String _email = 'siswa@mts-alhuda.sch.id';
+  final String _kelas = '7';
+  String _alamat = 'Gondang, Nganjuk';
+  final String _waliKelas = 'Wali Kelas';
+
+  @override
+  void initState() {
+    super.initState();
+    final sName = _authService.currentStudentName;
+    if (sName != null && sName.isNotEmpty) {
+      _nama = sName;
+    }
+    _authService.fetchMe().then((_) {
+      if (mounted) {
+        setState(() {
+          final updatedName = _authService.currentStudentName;
+          if (updatedName != null && updatedName.isNotEmpty) {
+            _nama = updatedName;
+          }
+        });
+      }
+    });
+  }
 
   Future<void> _editProfile() async {
     final result = await Navigator.push<Map<String, String>>(

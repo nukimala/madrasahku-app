@@ -35,6 +35,22 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
   String _alamat = '';
   String _waliKelas = '';
 
+  @override
+  void initState() {
+    super.initState();
+    final auth = AuthService.instance;
+    _nama = auth.currentTeacherName ?? 'Guru';
+    _email = auth.adminProfile.email;
+    auth.fetchMe().then((_) {
+      if (mounted) {
+        setState(() {
+          _nama = auth.currentTeacherName ?? 'Guru';
+          _email = auth.adminProfile.email;
+        });
+      }
+    });
+  }
+
   String get _namaGuru {
     if (_nama.trim().isNotEmpty) return _nama;
 

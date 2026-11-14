@@ -17,6 +17,19 @@ class _JadwalGuruPageState extends State<JadwalGuruPage> {
   String _tahunAjaran = JadwalService.tahunAjaranTersedia.first;
   Semester _semester = Semester.ganjil;
   HariSekolah _hari = HariSekolah.senin;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _muatJadwal();
+  }
+
+  Future<void> _muatJadwal() async {
+    setState(() => _loading = true);
+    await JadwalService.instance.ambilJadwalApi();
+    if (mounted) setState(() => _loading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +123,9 @@ class _JadwalGuruPageState extends State<JadwalGuruPage> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: entries.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : entries.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32),

@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
+import '../../models/tugas_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/jadwal_service.dart';
+import '../../services/materi_service.dart';
+import '../../services/tugas_service.dart';
 import '../../widgets/siswa_bottom_nav.dart';
 import 'Materi/materi_page.dart';
 import 'tugas/tugas_page.dart';
@@ -19,6 +23,36 @@ class SiswaHomePage extends StatefulWidget {
 
 class _SiswaHomePageState extends State<SiswaHomePage> {
   int _currentIndex = 0;
+  int _jumlahMateri = 0;
+  int _jumlahTugas = 0;
+  List<TugasItem> _tugasTerbaru = [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _muatDataSiswa();
+  }
+
+  Future<void> _muatDataSiswa() async {
+    setState(() => _loading = true);
+    try {
+      final materi = await MateriService.instance.ambilDaftarMateri();
+      final tugas = await TugasService.instance.ambilDaftarTugas();
+      await JadwalService.instance.ambilJadwalApi();
+
+      if (mounted) {
+        setState(() {
+          _jumlahMateri = materi.length;
+          _jumlahTugas = tugas.where((t) => !t.isSubmitted).length;
+          _tugasTerbaru = tugas.take(3).toList();
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   void _changePage(int index) {
     setState(() {
@@ -144,7 +178,7 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
               Expanded(
                 child: _ActivityCard(
                   icon: Icons.menu_book_outlined,
-                  count: '5',
+                  count: '$_jumlahMateri',
                   label: 'Materi Belum Dibaca',
                   onTap: () => _changePage(1),
                 ),
@@ -153,7 +187,7 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
               Expanded(
                 child: _ActivityCard(
                   icon: Icons.assignment_turned_in_outlined,
-                  count: '2',
+                  count: '$_jumlahTugas',
                   label: 'Tugas Perlu Dikerjakan',
                   onTap: () => _changePage(2),
                 ),
@@ -169,39 +203,50 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
             style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
           ),
           const SizedBox(height: 12),
-          _TaskCard(
-            title: 'Matematika',
-            line1: 'Bab 3 - Persamaan Linear',
-            line2: 'Batas: 12 April 2026',
-            isNew: true,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const UploadTugasPage(
-                  title: 'Bab 3 - Persamaan Linear',
-                  subject: 'Matematika',
-                  deadline: '12 April 2026',
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_tugasTerbaru.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Belum ada tugas baru yang perlu dikerjakan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            )
+          else
+            ..._tugasTerbaru.map(
+              (t) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _TaskCard(
+                  title: t.subjectName,
+                  line1: t.title,
+                  line2: 'Batas: ${t.deadline}',
+                  isNew: !t.isSubmitted,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UploadTugasPage(
+                        title: t.title,
+                        subject: t.subjectName,
+                        deadline: t.deadline,
+                        publicId: t.publicId,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _TaskCard(
-            title: 'Hafalan Surat',
-            line1: 'Al-Quran Hadis',
-            line2: 'PPT 2.5 MB',
-            isNew: true,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const UploadTugasPage(
-                  title: 'Hafalan Surat',
-                  subject: 'Al-Quran Hadis',
-                  deadline: '12 April 2026',
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

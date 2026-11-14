@@ -4,6 +4,7 @@ import '../../models/jadwal_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/jadwal_service.dart';
 import '../../services/presensi_service.dart';
+import '../../services/tugas_service.dart';
 
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
@@ -28,7 +29,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
 
   static const Color _green = Color(0xFF219653);
 
-  final int _tugasPerluDinilai = 2;
+  int _tugasPerluDinilai = 0;
 
   @override
   void initState() {
@@ -38,8 +39,12 @@ class _GuruHomePageState extends State<GuruHomePage> {
 
   Future<void> _muatData() async {
     await PresensiService.instance.sinkronkanHariIni();
+    await JadwalService.instance.ambilJadwalApi();
+    final tugas = await TugasService.instance.ambilDaftarTugas();
     if (mounted) {
-      setState(() {});
+      setState(() {
+        _tugasPerluDinilai = tugas.length;
+      });
     }
   }
 

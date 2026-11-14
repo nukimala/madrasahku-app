@@ -66,9 +66,12 @@ class JadwalService {
   ];
 
   final List<JadwalPelajaran> _jadwal = [];
+  final List<JadwalPelajaran> _jadwalApi = [];
   final Set<String> _tahunAjaranTambahan = {};
   int _nextId = 1;
   bool _loaded = false;
+
+  List<JadwalPelajaran> get jadwalApi => _jadwalApi;
 
   List<String> get daftarTahunAjaran => {
     ...tahunAjaranTersedia,
@@ -151,10 +154,13 @@ class JadwalService {
       final list = res.data['schedules'] as List;
       final result = list.map((item) => _parseJadwalJson(item)).toList();
       result.sort(_compareTime);
+      _jadwalApi
+        ..clear()
+        ..addAll(result);
       return result;
     }
 
-    return [];
+    return _jadwalApi;
   }
 
   JadwalPelajaran _parseJadwalJson(dynamic json) {
@@ -174,17 +180,30 @@ class JadwalService {
       return HariSekolah.sabtu;
     }
 
+    final className = json['class'] is Map
+        ? json['class']['name']?.toString()
+        : (json['class_name'] ?? json['kelas'] ?? '');
+
+    final subjectName = json['subject'] is Map
+        ? json['subject']['name']?.toString()
+        : (json['subject_name'] ?? json['mapel'] ?? '');
+
+    final subjectCode = json['subject'] is Map
+        ? json['subject']['code']?.toString()
+        : json['subject_code']?.toString();
+
     return JadwalPelajaran(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       tahunAjaran: json['academic_year'] ?? '2026/2027',
       semester: (json['semester'] == '2' || json['semester'] == 'genap')
           ? Semester.genap
           : Semester.ganjil,
-      kelas: json['class_name'] ?? json['kelas'] ?? '',
+      kelas: className,
       hari: parseHari(json['day_name'] ?? json['day_of_week']),
       mulaiMenit: parseMenit(json['start_time']),
       selesaiMenit: parseMenit(json['end_time']),
-      mataPelajaran: json['subject_name'] ?? json['mapel'] ?? '',
+      mataPelajaran: subjectName ?? '',
+      kodeMapel: subjectCode,
       guru: json['teacher_name'] ?? json['guru'] ?? '',
       ruang: json['room'] ?? 'Ruang Kelas',
     );
@@ -218,13 +237,32 @@ class JadwalService {
     required Semester semester,
     required String guru,
     HariSekolah? hari,
-  }) => semuaJadwal(tahunAjaran: tahunAjaran, semester: semester)
-      .where(
-        (item) =>
-            item.guru.split('/').map((nama) => nama.trim()).contains(guru) &&
-            (hari == null || item.hari == hari),
-      )
-      .toList();
+  }) {
+    // Jika data API sudah dimuat, utamakan data live dari server
+    if (_jadwalApi.isNotEmpty) {
+      return _jadwalApi
+          .where((item) =>
+              (hari == null || item.hari == hari))
+          .toList()
+        ..sort(_compareTime);
+    }
+
+    return semuaJadwal(tahunAjaran: tahunAjaran, semester: semester)
+        .where(
+          (item) =>
+              item.guru.split('/').map((nama) => nama.trim()).contains(guru) &&
+              (hari == null || item.hari == hari),
+        )
+        .toList();
+  }
+
+  /// Jadwal siswa berdasarkan hari (dari API live)
+  List<JadwalPelajaran> jadwalSiswa({HariSekolah? hari}) {
+    return _jadwalApi
+        .where((item) => hari == null || item.hari == hari)
+        .toList()
+      ..sort(_compareTime);
+  }
 
   Future<String?> simpan(JadwalPelajaran jadwal, {int? kecualiId}) async {
     _ensureLoaded();

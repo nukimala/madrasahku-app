@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/materi_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'detail_materi_page.dart';
@@ -39,31 +40,44 @@ class _MateriPageState extends State<MateriPage> {
     'TIK',
   ];
 
-  // Data masih dummy (sementara hanya Matematika).
-  final Map<String, List<_Topik>> _data = {
-    'Matematika': [
-      _Topik('Minggu 1 - Bilangan Bulat', [
-        _Item('Bilangan Bulat', 'Silahkan dipelajari materi berikut',
-            _Status.selesai),
-        _Item('Bilangan Bulat', 'Deadline: 11 Desember 2026, 23.59',
-            _Status.sisa,
-            isTugas: true, badge: 'Sisa 7 Hari'),
-      ]),
-      _Topik('Minggu 2 - Operasi Hitung', [
-        _Item('Operasi Hitung', 'Silahkan dipelajari materi berikut',
-            _Status.lanjutkan),
-        _Item('Operasi Hitung', '', _Status.selesai, isTugas: true),
-      ]),
-      _Topik('Minggu 3 - FPB dan KPK', []),
-      _Topik('Minggu 4 - Desimal', []),
-      _Topik('Minggu 5 - Bangun Datar', []),
-      _Topik('Minggu 6 - Bangun Ruang', []),
-    ],
-  };
+  // Data materi dari database server API
+  final Map<String, List<_Topik>> _data = {};
 
   String _selectedMapel = 'Matematika';
   String _query = '';
   final Set<int> _expanded = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _muatMateri();
+  }
+
+  Future<void> _muatMateri() async {
+    try {
+      final items = await MateriService.instance.ambilDaftarMateri();
+      if (items.isNotEmpty && mounted) {
+        setState(() {
+          for (final item in items) {
+            final mapel = item.subjectName;
+            final topiks = _data.putIfAbsent(mapel, () => []);
+            final topicName = 'Materi ${item.className} - $mapel';
+            final existing = topiks.where((t) => t.title == topicName).toList();
+            final t = existing.isNotEmpty ? existing.first : _Topik(topicName, []);
+            if (existing.isEmpty) topiks.add(t);
+
+            t.items.add(_Item(
+              item.title,
+              item.description ?? 'Silakan pelajari materi berikut',
+              _Status.lanjutkan,
+              isTugas: false,
+              badge: null,
+            ));
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   List<_Topik> get _topikList {
     final all = _data[_selectedMapel] ?? const <_Topik>[];
@@ -235,11 +249,19 @@ class _MateriPageState extends State<MateriPage> {
             Expanded(
               child: topikList.isEmpty
                   ? Center(
-                      child: Text(
-                        _query.isEmpty
-                            ? 'Belum ada materi'
-                            : 'Materi tidak ditemukan',
-                        style: AppTextStyle.bodySmall,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.menu_book_outlined, size: 48, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          Text(
+                            _query.isEmpty
+                                ? 'Belum ada materi pembelajaran untuk $_selectedMapel'
+                                : 'Materi "$_query" tidak ditemukan',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyle.bodySmall,
+                          ),
+                        ],
                       ),
                     )
                   : ListView.separated(

@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../utilis/app_colors.dart';
@@ -52,7 +53,15 @@ class _EditMateriPageState extends State<EditMateriPage> {
   }
 
   Future<void> _pilihFile() async {
-    setState(() => _namaFile = 'materi_contoh.pdf');
+    try {
+      final res = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'png'],
+      );
+      if (res.isNotEmpty) {
+        setState(() => _namaFile = res.first.name);
+      }
+    } catch (_) {}
   }
 
   void _simpan() {

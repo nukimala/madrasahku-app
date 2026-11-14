@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -36,21 +37,58 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
   String _mapel = 'Matematika';
   String _query = '';
 
-  final List<TopikTugas> _topik = contohTopikTugas();
+  final List<TopikTugas> _topik = [];
   final Set<TopikTugas> _terbuka = {};
 
   @override
   void initState() {
     super.initState();
-    // Topik pertama terbuka di awal.
-    if (_topik.isNotEmpty) _terbuka.add(_topik.first);
+    _muatTugasApi();
+  }
+
+  Future<void> _muatTugasApi() async {
+    try {
+      final items = await TugasService.instance.ambilDaftarTugas();
+      if (mounted) {
+        setState(() {
+          _topik.clear();
+          for (var i = 0; i < items.length; i++) {
+            final t = items[i];
+            final deadline = DateTime.tryParse(t.deadline) ??
+                DateTime.now().add(const Duration(days: 7));
+            final topik = TopikTugas(
+              minggu: i + 1,
+              nama: t.title,
+              kelas: t.className,
+              mapel: t.subjectName,
+              tugas: [
+                TugasGuru(
+                  judul: t.title,
+                  deadline: deadline,
+                  siswa: [],
+                ),
+              ],
+            );
+            _topik.add(topik);
+            _terbuka.add(topik);
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   List<TopikTugas> get _hasil {
     final q = _query.toLowerCase();
 
     return _topik.where((t) {
-      if (t.kelas != _kelas || t.mapel != _mapel) return false;
+      final matchesKelas = t.kelas.isEmpty ||
+          t.kelas.toLowerCase().contains(_kelas.replaceAll('Kelas ', '').trim().toLowerCase()) ||
+          _kelas.toLowerCase().contains(t.kelas.toLowerCase());
+      final matchesMapel = t.mapel.isEmpty ||
+          t.mapel.toLowerCase().contains(_mapel.toLowerCase()) ||
+          _mapel.toLowerCase().contains(t.mapel.toLowerCase());
+
+      if (!matchesKelas || !matchesMapel) return false;
       if (q.isEmpty) return true;
 
       return t.judul.toLowerCase().contains(q) ||

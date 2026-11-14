@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../siswa_home_page.dart';
@@ -21,6 +22,7 @@ class _TugasItem {
 
   /// Tugas mendesak (judul & jam deadline berwarna merah) di tab Aktif.
   final bool isUrgent;
+  final String? publicId;
 
   const _TugasItem({
     required this.title,
@@ -32,6 +34,7 @@ class _TugasItem {
     required this.status,
     this.month = 'November 2026',
     this.isUrgent = false,
+    this.publicId,
   });
 
   String get deadline => '$endDate, $endTime';
@@ -47,100 +50,45 @@ class TugasPage extends StatefulWidget {
 }
 
 class _TugasPageState extends State<TugasPage> {
-  // Data dummy (nanti bisa diganti dari API / database)
-  static const List<_TugasItem> _allTugas = [
-    // ---- Aktif ----
-    _TugasItem(
-      title: 'Persamaan Linear',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.aktif,
-    ),
-    _TugasItem(
-      title: 'Doa sebelum tidur',
-      subject: 'Bahasa Arab',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.aktif,
-    ),
-    _TugasItem(
-      title: 'Software Hardware',
-      subject: 'Informatika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.aktif,
-    ),
-    _TugasItem(
-      title: 'Sumpah Pemuda',
-      subject: 'IPAS',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.aktif,
-    ),
-    _TugasItem(
-      title: 'FPB dan KPK',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.aktif,
-      isUrgent: true,
-    ),
+  List<_TugasItem> _liveTugas = [];
+  bool _loading = false;
 
-    // ---- Selesai ----
-    _TugasItem(
-      title: 'Persamaan Linear',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.selesai,
-      month: 'November 2026',
-    ),
-    _TugasItem(
-      title: 'Persamaan Linear',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.selesai,
-      month: 'Oktober 2026',
-    ),
+  @override
+  void initState() {
+    super.initState();
+    _muatTugas();
+  }
 
-    // ---- Terlambat ----
-    _TugasItem(
-      title: 'Persamaan Linear',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.terlambat,
-      month: 'November 2026',
-    ),
-    _TugasItem(
-      title: 'Persamaan Linear',
-      subject: 'Matematika',
-      startTime: '07:01',
-      startDate: 'sel,3 november',
-      endTime: '16:00',
-      endDate: 'Kamis,4 november',
-      status: TugasStatus.terlambat,
-      month: 'Oktober 2026',
-    ),
-  ];
+  Future<void> _muatTugas() async {
+    setState(() => _loading = true);
+    try {
+      final items = await TugasService.instance.ambilDaftarTugas();
+      if (items.isNotEmpty) {
+        final mapped = items.map((t) {
+          final isDone = t.isSubmitted;
+          final status = isDone ? TugasStatus.selesai : TugasStatus.aktif;
+          final dl = t.deadline;
+          final isUrgent = dl.toLowerCase().contains('hari ini') || dl.toLowerCase().contains('besok');
+          return _TugasItem(
+            title: t.title,
+            subject: t.subjectName,
+            startTime: '',
+            startDate: '',
+            endTime: '',
+            endDate: t.deadline,
+            status: status,
+            month: 'Semester Berjalan',
+            isUrgent: isUrgent,
+            publicId: t.publicId,
+          );
+        }).toList();
+        if (mounted) setState(() => _liveTugas = mapped);
+      } else {
+        if (mounted) setState(() => _liveTugas = []);
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
 
   static const List<String> _tabs = ['Aktif', 'Selesai', 'Terlambat'];
 
@@ -148,7 +96,7 @@ class _TugasPageState extends State<TugasPage> {
 
   List<_TugasItem> get _filtered {
     final status = TugasStatus.values[_selectedTab];
-    return _allTugas.where((t) => t.status == status).toList();
+    return _liveTugas.where((t) => t.status == status).toList();
   }
 
   /// Kelompokkan tugas per bulan (urutan kemunculan dipertahankan).
@@ -168,9 +116,10 @@ class _TugasPageState extends State<TugasPage> {
           title: item.title,
           subject: item.subject,
           deadline: item.deadline,
+          publicId: item.publicId,
         ),
       ),
-    );
+    ).then((_) => _muatTugas());
   }
 
   void _goHome() {
@@ -244,16 +193,25 @@ class _TugasPageState extends State<TugasPage> {
 
               // List tugas
               Expanded(
-                child: items.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Belum ada tugas',
-                          style: AppTextStyle.bodySmall,
-                        ),
-                      )
-                    : isAktif
-                        ? _buildFlatList(items)
-                        : _buildGroupedList(items),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : items.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.assignment_outlined, size: 48, color: Colors.grey),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Belum ada tugas ${isAktif ? "aktif" : _tabs[_selectedTab].toLowerCase()}',
+                                  style: AppTextStyle.bodyMedium.copyWith(color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          )
+                        : isAktif
+                            ? _buildFlatList(items)
+                            : _buildGroupedList(items),
               ),
             ],
           ),

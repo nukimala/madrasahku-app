@@ -1,5 +1,7 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -7,12 +9,14 @@ class UploadTugasPage extends StatefulWidget {
   final String title;
   final String subject;
   final String deadline;
+  final String? publicId;
 
   const UploadTugasPage({
     super.key,
     required this.title,
     required this.subject,
     required this.deadline,
+    this.publicId,
   });
 
   @override
@@ -37,11 +41,27 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
     super.dispose();
   }
 
-  void _pickFile() {
-    setState(() {
-      _fileName = 'Tugas_Matematika.pdf';
-      _fileInfo = 'PDF 2.5 MB';
-    });
+  Future<void> _pickFile() async {
+    try {
+      final res = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'],
+      );
+      if (res.isNotEmpty) {
+        final f = res.first;
+        final bytes = (f.lengthSync() ?? await f.length()) ?? 0;
+        final sizeKb = (bytes / 1024).round();
+        final sizeStr = sizeKb > 1024
+            ? '${(sizeKb / 1024).toStringAsFixed(1)} MB'
+            : '$sizeKb KB';
+        setState(() {
+          _fileName = f.name;
+          _fileInfo = '${f.extension?.toUpperCase() ?? "BERKAS"} $sizeStr';
+        });
+      }
+    } catch (_) {
+      _showMessage('Tidak dapat membuka pemilih file.');
+    }
   }
 
   void _removeFile() {
@@ -58,12 +78,28 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
     }
 
     setState(() => _isSubmitting = true);
+
+    if (widget.publicId != null && widget.publicId!.isNotEmpty) {
+      final res = await TugasService.instance.kumpulkanTugas(
+        publicId: widget.publicId!,
+        fileUrl: _fileName!,
+        note: _noteController.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      _showMessage(res['message'] ?? 'Tugas berhasil dikumpulkan.');
+      if (res['success'] == true) {
+        Navigator.pop(context, true);
+      }
+      return;
+    }
+
     await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     _showMessage('Tugas "${widget.title}" berhasil dikumpulkan.');
-    Navigator.pop(context);
+    Navigator.pop(context, true);
   }
 
   void _showMessage(String message) {
