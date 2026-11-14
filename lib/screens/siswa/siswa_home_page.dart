@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
-import 'Materi/materi_page.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/siswa_bottom_nav.dart';
+import 'Materi/materi_page.dart';
 import 'tugas/tugas_page.dart';
 import 'tugas/upload_tugas_page.dart';
 import 'profile/profil_siswa_page.dart';
@@ -37,10 +38,7 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: pages,
-        ),
+        child: IndexedStack(index: _currentIndex, children: pages),
       ),
       bottomNavigationBar: SiswaBottomNav(
         currentIndex: _currentIndex,
@@ -76,15 +74,12 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text('Assalamu’alaikum,', style: AppTextStyle.bodySmall),
                     Text(
-                      'Assalamu’alaikum,',
-                      style: AppTextStyle.bodySmall,
+                      AuthService.instance.currentStudentName ?? 'Siswa',
+                      style: AppTextStyle.headingSmall,
                     ),
-                    Text('Ahmad Fauzi', style: AppTextStyle.headingSmall),
-                    Text(
-                      'Siswa - Kelas VIII A',
-                      style: AppTextStyle.bodySmall,
-                    ),
+                    Text('Siswa', style: AppTextStyle.bodySmall),
                   ],
                 ),
               ),
