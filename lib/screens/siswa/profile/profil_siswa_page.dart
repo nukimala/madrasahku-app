@@ -9,10 +9,7 @@ import 'edit_profil_siswa.dart';
 class ProfilSiswaPage extends StatefulWidget {
   final VoidCallback? onBack;
 
-  const ProfilSiswaPage({
-    super.key,
-    this.onBack,
-  });
+  const ProfilSiswaPage({super.key, this.onBack});
 
   @override
   State<ProfilSiswaPage> createState() => _ProfilSiswaPageState();
@@ -25,7 +22,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
   AuthService get _authService => AuthService.instance;
 
   // Data masih dummy, nanti bisa diambil dari AuthService/database.
-  String _nama = 'Ahmad Fauzi';
+  final _nama = AuthService.instance.currentStudentName ?? 'Siswa';
   final String _nisn = '0051234567';
   String _email = 'ahmad.f@siswa.sch';
   final String _kelas = 'VIII A';
@@ -36,17 +33,13 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
     final result = await Navigator.push<Map<String, String>>(
       context,
       MaterialPageRoute(
-        builder: (_) => EditProfilSiswaPage(
-          nama: _nama,
-          email: _email,
-          alamat: _alamat,
-        ),
+        builder: (_) =>
+            EditProfilSiswaPage(nama: _nama, email: _email, alamat: _alamat),
       ),
     );
 
     if (result != null && mounted) {
       setState(() {
-        _nama = result['nama'] ?? _nama;
         _email = result['email'] ?? _email;
         _alamat = result['alamat'] ?? _alamat;
       });
@@ -352,18 +345,18 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
 
 // Gaya teks dari Figma.
 TextStyle _poppins(double size, FontWeight weight, Color color) => TextStyle(
-      fontFamily: 'Poppins',
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-    );
+  fontFamily: 'Poppins',
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+);
 
 TextStyle _inter(double size, FontWeight weight, Color color) => TextStyle(
-      fontFamily: 'Inter',
-      fontSize: size,
-      fontWeight: weight,
-      color: color,
-    );
+  fontFamily: 'Inter',
+  fontSize: size,
+  fontWeight: weight,
+  color: color,
+);
 
 class _SectionTitle extends StatelessWidget {
   final String title;
@@ -475,16 +468,16 @@ class _PasswordField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        validator: validator,
-        decoration: InputDecoration(
-          labelText: label,
-          suffixIcon: IconButton(
-            onPressed: onToggleVisibility,
-            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+    controller: controller,
+    obscureText: obscureText,
+    validator: validator,
+    decoration: InputDecoration(
+      labelText: label,
+      suffixIcon: IconButton(
+        onPressed: onToggleVisibility,
+        icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
+      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
 }
