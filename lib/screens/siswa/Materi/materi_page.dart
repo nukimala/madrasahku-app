@@ -4,11 +4,14 @@ import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'detail_materi_page.dart';
 import '../tugas/upload_tugas_page.dart';
-import '../siswa_bottom_nav.dart';
-import '../siswa_home_page.dart';
 
 class MateriPage extends StatefulWidget {
-  const MateriPage({super.key});
+  final VoidCallback? onBack;
+
+  const MateriPage({
+    super.key,
+    this.onBack,
+  });
 
   @override
   State<MateriPage> createState() => _MateriPageState();
@@ -17,7 +20,7 @@ class MateriPage extends StatefulWidget {
 class _MateriPageState extends State<MateriPage> {
   static const _kelas = 'Kelas VIII A';
 
-  // Daftar mata pelajaran (sesuai kode bidang studi)
+  // Daftar mata pelajaran (sesuai kode bidang studi).
   static const _mapelList = [
     'Matematika',
     "Qur'an Hadits",
@@ -36,7 +39,7 @@ class _MateriPageState extends State<MateriPage> {
     'TIK',
   ];
 
-  // Data dummy per mata pelajaran (sementara hanya Matematika)
+  // Data masih dummy (sementara hanya Matematika).
   final Map<String, List<_Topik>> _data = {
     'Matematika': [
       _Topik('Minggu 1 - Bilangan Bulat', [
@@ -65,12 +68,22 @@ class _MateriPageState extends State<MateriPage> {
   List<_Topik> get _topikList {
     final all = _data[_selectedMapel] ?? const <_Topik>[];
     final q = _query.trim().toLowerCase();
+
     if (q.isEmpty) return all;
+
     return all
-        .where((t) =>
-            t.title.toLowerCase().contains(q) ||
-            t.items.any((i) => i.title.toLowerCase().contains(q)))
+        .where((topik) =>
+            topik.title.toLowerCase().contains(q) ||
+            topik.items.any((item) => item.title.toLowerCase().contains(q)))
         .toList();
+  }
+
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else {
+      Navigator.maybePop(context);
+    }
   }
 
   Future<void> _openDetail(_Topik topik, _Item item) async {
@@ -84,7 +97,8 @@ class _MateriPageState extends State<MateriPage> {
         ),
       ),
     );
-    if (selesai == true && !item.isTugas) {
+
+    if (selesai == true && !item.isTugas && mounted) {
       setState(() => item.status = _Status.selesai);
     }
   }
@@ -116,27 +130,28 @@ class _MateriPageState extends State<MateriPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header.
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 20, 0),
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => _goHome(context),
+                    onPressed: _handleBack,
                     icon: const Icon(
                       Icons.arrow_back,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  Text('Materi Pembelajaran',
-                      style: AppTextStyle.headingSmall),
+                  Text(
+                    'Materi Pembelajaran',
+                    style: AppTextStyle.headingSmall,
+                  ),
                 ],
               ),
             ),
-
             const SizedBox(height: 8),
 
-            // Pencarian + filter mata pelajaran
+            // Pencarian dan filter mata pelajaran.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -147,7 +162,7 @@ class _MateriPageState extends State<MateriPage> {
                       height: 38,
                       decoration: _boxDecoration(),
                       child: TextField(
-                        onChanged: (v) => setState(() => _query = v),
+                        onChanged: (value) => setState(() => _query = value),
                         style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
                         decoration: InputDecoration(
                           hintText: 'Cari Materi....',
@@ -190,16 +205,20 @@ class _MateriPageState extends State<MateriPage> {
                             color: AppColors.textPrimary,
                           ),
                           items: _mapelList
-                              .map((m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(m,
-                                        overflow: TextOverflow.ellipsis),
-                                  ))
+                              .map(
+                                (mapel) => DropdownMenuItem(
+                                  value: mapel,
+                                  child: Text(
+                                    mapel,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
                               .toList(),
-                          onChanged: (v) {
-                            if (v == null) return;
+                          onChanged: (value) {
+                            if (value == null) return;
                             setState(() {
-                              _selectedMapel = v;
+                              _selectedMapel = value;
                               _expanded.clear();
                             });
                           },
@@ -210,10 +229,9 @@ class _MateriPageState extends State<MateriPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 14),
 
-            // Daftar topik (accordion)
+            // Daftar topik (accordion).
             Expanded(
               child: topikList.isEmpty
                   ? Center(
@@ -231,14 +249,19 @@ class _MateriPageState extends State<MateriPage> {
                       itemBuilder: (context, index) {
                         final topik = topikList[index];
                         final open = _expanded.contains(index);
+
                         return _TopikCard(
                           topik: topik,
                           expanded: open,
                           onToggle: () => setState(() {
-                            open ? _expanded.remove(index) : _expanded.add(index);
+                            if (open) {
+                              _expanded.remove(index);
+                            } else {
+                              _expanded.add(index);
+                            }
                           }),
                           onItemTap: (item) => _openDetail(topik, item),
-                          onKumpulkan: (item) => _openUploadTugas(item),
+                          onKumpulkan: _openUploadTugas,
                         );
                       },
                     ),
@@ -246,7 +269,7 @@ class _MateriPageState extends State<MateriPage> {
           ],
         ),
       ),
-      bottomNavigationBar: const SiswaBottomNav(currentIndex: 1),
+      // Bottom navigation dikelola oleh SiswaHomePage.
     );
   }
 
@@ -261,15 +284,6 @@ class _MateriPageState extends State<MateriPage> {
           ),
         ],
       );
-
-  static void _goHome(BuildContext context) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SiswaHomePage()),
-      (route) => false,
-    );
-  }
-
 }
 
 enum _Status { selesai, lanjutkan, sisa }
@@ -277,6 +291,7 @@ enum _Status { selesai, lanjutkan, sisa }
 class _Topik {
   final String title;
   final List<_Item> items;
+
   _Topik(this.title, this.items);
 }
 
@@ -287,8 +302,13 @@ class _Item {
   final String? badge;
   _Status status;
 
-  _Item(this.title, this.subtitle, this.status,
-      {this.isTugas = false, this.badge});
+  _Item(
+    this.title,
+    this.subtitle,
+    this.status, {
+    this.isTugas = false,
+    this.badge,
+  });
 }
 
 class _TopikCard extends StatelessWidget {
@@ -484,7 +504,11 @@ class _Chip extends StatelessWidget {
   final Color bg;
   final Color fg;
 
-  const _Chip(this.label, {required this.bg, required this.fg});
+  const _Chip(
+    this.label, {
+    required this.bg,
+    required this.fg,
+  });
 
   @override
   Widget build(BuildContext context) {

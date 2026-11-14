@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
-import '../siswa_bottom_nav.dart';
 import '../siswa_home_page.dart';
 import 'upload_tugas_page.dart';
 
@@ -39,7 +38,9 @@ class _TugasItem {
 }
 
 class TugasPage extends StatefulWidget {
-  const TugasPage({super.key});
+  final VoidCallback? onBack;
+
+  const TugasPage({super.key, this.onBack});
 
   @override
   State<TugasPage> createState() => _TugasPageState();
@@ -173,6 +174,11 @@ class _TugasPageState extends State<TugasPage> {
   }
 
   void _goHome() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const SiswaHomePage()),
@@ -254,8 +260,6 @@ class _TugasPageState extends State<TugasPage> {
         ),
       ),
 
-      // Bottom navigation yang sudah ada di siswa_bottom_nav.dart.
-      bottomNavigationBar: const SiswaBottomNav(currentIndex: 2),
     );
   }
 

@@ -4,11 +4,15 @@ import '../../../services/auth_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../../auth/login_page.dart';
-import '../siswa_bottom_nav.dart';
 import 'edit_profil_siswa.dart';
 
 class ProfilSiswaPage extends StatefulWidget {
-  const ProfilSiswaPage({super.key});
+  final VoidCallback? onBack;
+
+  const ProfilSiswaPage({
+    super.key,
+    this.onBack,
+  });
 
   @override
   State<ProfilSiswaPage> createState() => _ProfilSiswaPageState();
@@ -20,7 +24,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
 
   AuthService get _authService => AuthService.instance;
 
-  // Data dummy (nanti bisa diganti dari AuthService / database)
+  // Data masih dummy, nanti bisa diambil dari AuthService/database.
   String _nama = 'Ahmad Fauzi';
   final String _nisn = '0051234567';
   String _email = 'ahmad.f@siswa.sch';
@@ -28,7 +32,6 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
   String _alamat = 'Kedungwaru, Tulungagung';
   final String _waliKelas = 'Bu Siti Nurhazia';
 
-  // Membuka halaman edit, lalu update tampilan kalau ada perubahan.
   Future<void> _editProfile() async {
     final result = await Navigator.push<Map<String, String>>(
       context,
@@ -127,7 +130,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
             ElevatedButton(
               onPressed: () {
                 if (!formKey.currentState!.validate()) return;
-                // TODO: ganti dengan AuthService.changeSiswaPassword(...)
+                // TODO: hubungkan ke API untuk mengubah password siswa.
                 Navigator.pop(dialogContext, true);
               },
               style: ElevatedButton.styleFrom(
@@ -186,6 +189,14 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
     );
   }
 
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+    } else {
+      Navigator.maybePop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -203,7 +214,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                     Row(
                       children: [
                         InkWell(
-                          onTap: () => Navigator.maybePop(context),
+                          onTap: _handleBack,
                           borderRadius: BorderRadius.circular(20),
                           child: const Padding(
                             padding: EdgeInsets.all(2),
@@ -246,7 +257,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                     ),
                     _SettingItem(
                       icon: Icons.lock_outline,
-                      label: 'ubah password',
+                      label: 'Ubah password',
                       onTap: _changePassword,
                     ),
                     _SettingItem(
@@ -258,7 +269,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                 ),
               ),
             ),
-            // Tombol edit profil
+            // Tombol edit profil.
             Padding(
               padding: const EdgeInsets.fromLTRB(50, 0, 50, 16),
               child: Container(
@@ -293,8 +304,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
           ],
         ),
       ),
-      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
-      bottomNavigationBar: const SiswaBottomNav(currentIndex: 3),
+      // Bottom navigation dikelola oleh SiswaHomePage.
     );
   }
 
@@ -340,20 +350,20 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
   }
 }
 
-// Gaya teks dari Figma
+// Gaya teks dari Figma.
 TextStyle _poppins(double size, FontWeight weight, Color color) => TextStyle(
-  fontFamily: 'Poppins',
-  fontSize: size,
-  fontWeight: weight,
-  color: color,
-);
+      fontFamily: 'Poppins',
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+    );
 
 TextStyle _inter(double size, FontWeight weight, Color color) => TextStyle(
-  fontFamily: 'Inter',
-  fontSize: size,
-  fontWeight: weight,
-  color: color,
-);
+      fontFamily: 'Inter',
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+    );
 
 class _SectionTitle extends StatelessWidget {
   final String title;
@@ -465,16 +475,16 @@ class _PasswordField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-    controller: controller,
-    obscureText: obscureText,
-    validator: validator,
-    decoration: InputDecoration(
-      labelText: label,
-      suffixIcon: IconButton(
-        onPressed: onToggleVisibility,
-        icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
-      ),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
+        controller: controller,
+        obscureText: obscureText,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
+          suffixIcon: IconButton(
+            onPressed: onToggleVisibility,
+            icon: Icon(obscureText ? Icons.visibility_off : Icons.visibility),
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
 }

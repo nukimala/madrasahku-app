@@ -4,192 +4,211 @@ import '../../utilis/app_colors.dart';
 import '../../utilis/app_text_style.dart';
 
 import 'Materi/materi_page.dart';
-import 'siswa_bottom_nav.dart';
+import '../../widgets/siswa_bottom_nav.dart';
 import 'tugas/tugas_page.dart';
 import 'tugas/upload_tugas_page.dart';
+import 'profile/profil_siswa_page.dart';
 
-class SiswaHomePage extends StatelessWidget {
+class SiswaHomePage extends StatefulWidget {
   const SiswaHomePage({super.key});
 
   @override
+  State<SiswaHomePage> createState() => _SiswaHomePageState();
+}
+
+class _SiswaHomePageState extends State<SiswaHomePage> {
+  int _currentIndex = 0;
+
+  void _changePage(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final pages = [
+      _buildHomeContent(),
+      const MateriPage(),
+      const TugasPage(),
+      const ProfilSiswaPage(),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: IndexedStack(
+          index: _currentIndex,
+          children: pages,
+        ),
+      ),
+      bottomNavigationBar: SiswaBottomNav(
+        currentIndex: _currentIndex,
+        onTap: _changePage,
+      ),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header siswa
+          Row(
             children: [
-              // Header siswa
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFE5E7EB),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      size: 32,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Assalamu’alaikum,',
-                          style: AppTextStyle.bodySmall,
-                        ),
-                        Text('Ahmad Fauzi', style: AppTextStyle.headingSmall),
-                        Text(
-                          'Siswa - Kelas VIII A',
-                          style: AppTextStyle.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Banner utama
               Container(
-                width: double.infinity,
-                height: 130,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2F9E62), Color(0xFF4ADE80)],
-                    begin: Alignment.bottomLeft,
-                    end: Alignment.topRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE5E7EB),
+                  shape: BoxShape.circle,
                 ),
-                child: Stack(
+                child: const Icon(
+                  Icons.person,
+                  size: 32,
+                  color: Color(0xFF374151),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Positioned(
-                      left: 16,
-                      top: 16,
-                      right: 12,
-                      child: Text(
-                        'Jadikan Ilmu sebagai\n'
-                        'jalan meraih ridha Allah',
-                        style: AppTextStyle.headingSmall.copyWith(
-                          color: AppColors.white,
-                          fontSize: 12,
-                        ),
-                      ),
+                    Text(
+                      'Assalamu’alaikum,',
+                      style: AppTextStyle.bodySmall,
                     ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: Image.asset(
-                        'assets/image/masjid.png',
-                        height: 180,
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomCenter,
-                      ),
+                    Text('Ahmad Fauzi', style: AppTextStyle.headingSmall),
+                    Text(
+                      'Siswa - Kelas VIII A',
+                      style: AppTextStyle.bodySmall,
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
 
-              const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
-              // Aktivitas Pembelajaran
-              Text(
-                'Aktivitas Pembelajaran',
-                style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
+          // Banner utama
+          Container(
+            width: double.infinity,
+            height: 130,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2F9E62), Color(0xFF4ADE80)],
+                begin: Alignment.bottomLeft,
+                end: Alignment.topRight,
               ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActivityCard(
-                      icon: Icons.menu_book_outlined,
-                      count: '5',
-                      label: 'Materi Belum Dibaca',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MateriPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: _ActivityCard(
-                      icon: Icons.assignment_turned_in_outlined,
-                      count: '2',
-                      label: 'Tugas Perlu Dikerjakan',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TugasPage(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 28),
-
-              // Tugas terbaru
-              Text(
-                'Tugas Terbaru',
-                style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              _TaskCard(
-                title: 'Matematika',
-                line1: 'Bab 3 - Persamaan Linear',
-                line2: 'Batas: 12 April 2026',
-                isNew: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UploadTugasPage(
-                      title: 'Bab 3 - Persamaan Linear',
-                      subject: 'Matematika',
-                      deadline: '12 April 2026',
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 16,
+                  top: 16,
+                  right: 12,
+                  child: Text(
+                    'Jadikan Ilmu sebagai\n'
+                    'jalan meraih ridha Allah',
+                    style: AppTextStyle.headingSmall.copyWith(
+                      color: AppColors.white,
+                      fontSize: 12,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _TaskCard(
-                title: 'Hafalan Surat',
-                line1: 'Al-Quran Hadis',
-                line2: 'PPT 2.5 MB',
-                isNew: true,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UploadTugasPage(
-                      title: 'Hafalan Surat',
-                      subject: 'Al-Quran Hadis',
-                      deadline: '12 April 2026',
-                    ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Image.asset(
+                    'assets/image/masjid.png',
+                    height: 180,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomCenter,
                   ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Aktivitas Pembelajaran
+          Text(
+            'Aktivitas Pembelajaran',
+            style: AppTextStyle.headingSmall.copyWith(fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _ActivityCard(
+                  icon: Icons.menu_book_outlined,
+                  count: '5',
+                  label: 'Materi Belum Dibaca',
+                  onTap: () => _changePage(1),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: _ActivityCard(
+                  icon: Icons.assignment_turned_in_outlined,
+                  count: '2',
+                  label: 'Tugas Perlu Dikerjakan',
+                  onTap: () => _changePage(2),
                 ),
               ),
             ],
           ),
-        ),
-      ),
 
-      // Menggunakan bottom navigation yang sudah dibuat di siswa_bottom_nav.dart.
-      bottomNavigationBar: const SiswaBottomNav(currentIndex: 0),
+          const SizedBox(height: 28),
+
+          // Tugas terbaru
+          Text(
+            'Tugas Terbaru',
+            style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+          ),
+          const SizedBox(height: 12),
+          _TaskCard(
+            title: 'Matematika',
+            line1: 'Bab 3 - Persamaan Linear',
+            line2: 'Batas: 12 April 2026',
+            isNew: true,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const UploadTugasPage(
+                  title: 'Bab 3 - Persamaan Linear',
+                  subject: 'Matematika',
+                  deadline: '12 April 2026',
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _TaskCard(
+            title: 'Hafalan Surat',
+            line1: 'Al-Quran Hadis',
+            line2: 'PPT 2.5 MB',
+            isNew: true,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const UploadTugasPage(
+                  title: 'Hafalan Surat',
+                  subject: 'Al-Quran Hadis',
+                  deadline: '12 April 2026',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
