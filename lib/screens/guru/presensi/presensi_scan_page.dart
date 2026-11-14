@@ -23,6 +23,14 @@ class _PresensiScanPageState extends State<PresensiScanPage> {
   bool _memproses = false;
 
   @override
+  void initState() {
+    super.initState();
+    PresensiService.instance.sinkronkanHariIni().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();

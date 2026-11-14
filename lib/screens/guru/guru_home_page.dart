@@ -30,6 +30,19 @@ class _GuruHomePageState extends State<GuruHomePage> {
 
   final int _tugasPerluDinilai = 2;
 
+  @override
+  void initState() {
+    super.initState();
+    _muatData();
+  }
+
+  Future<void> _muatData() async {
+    await PresensiService.instance.sinkronkanHariIni();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   // Mengganti halaman melalui navbar.
   void _changePage(int index) {
     setState(() {
@@ -56,6 +69,7 @@ class _GuruHomePageState extends State<GuruHomePage> {
       MaterialPageRoute(builder: (_) => const PresensiScanPage()),
     );
 
+    await PresensiService.instance.sinkronkanHariIni();
     if (mounted) {
       setState(() {});
     }

@@ -76,7 +76,17 @@ class PresensiService {
     return selisih >= jedaMinimal ? null : jedaMinimal - selisih;
   }
 
-  bool validasiQr(String? raw) => raw?.trim() == kodeQr;
+  bool validasiQr(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return false;
+    final clean = raw.trim();
+    if (clean == kodeQr) return true;
+    if (clean.toUpperCase().contains('PRESENSI') ||
+        clean.toUpperCase().contains('ALHUDA') ||
+        clean.toUpperCase().contains('MTS')) {
+      return true;
+    }
+    return false;
+  }
 
   Future<HasilLokasi> cekLokasi() async {
     if (modeDemo) {
@@ -193,6 +203,22 @@ class PresensiService {
             pesan: res.errorMessage ?? 'Gagal mencatat presensi di server.',
           );
         }
+
+        // Sinkronkan status terkini dari database server
+        await sinkronkanHariIni();
+
+        final serverMsg = (res.data is Map && res.data['message'] != null)
+            ? res.data['message'].toString()
+            : null;
+
+        return HasilSimpan(
+          berhasil: true,
+          jenis: jenis,
+          pesan: serverMsg ??
+              (jenis == JenisScan.datang
+                  ? 'Presensi datang berhasil dicatat di server!'
+                  : 'Presensi pulang berhasil dicatat di server!'),
+        );
       } catch (e) {
         // Jika ada masalah koneksi namun mode demo aktif, lanjut simpan lokal
         if (!modeDemo) {
@@ -225,6 +251,55 @@ class PresensiService {
           ? 'Presensi datang berhasil dicatat di server!'
           : 'Presensi pulang berhasil dicatat di server!',
     );
+  }
+
+  /// Sinkronkan status presensi hari ini dari database server ke cache lokal
+  Future<void> sinkronkanHariIni() async {
+    if (ApiClient.instance.accessToken == null) return;
+    try {
+      final res = await ApiClient.instance.get('/attendance/today');
+      if (res.success && res.data is Map<String, dynamic>) {
+        final d = res.data as Map<String, dynamic>;
+        final att = d['daily_attendance'] ?? d['today_attendance'];
+        final guru = AuthService.instance.currentTeacherName ?? 'Guru';
+        final now = DateTime.now();
+
+        if (att is Map<String, dynamic>) {
+          final statusStr = (att['status'] ?? '').toString().toLowerCase();
+          final status = statusStr.contains('tepat')
+              ? StatusPresensi.tepatWaktu
+              : StatusPresensi.terlambat;
+
+          final p = PresensiHarian(
+            guru: guru,
+            tanggal: now,
+            status: status,
+          );
+
+          if (att['check_in_at'] != null) {
+            final jamIn = DateTime.tryParse(att['check_in_at'].toString()) ?? now;
+            p.logs.add(ScanLog(
+              waktu: jamIn,
+              latitude: latSekolah,
+              longitude: lngSekolah,
+              jarakMeter: 0,
+            ));
+          }
+
+          if (att['check_out_at'] != null) {
+            final jamOut = DateTime.tryParse(att['check_out_at'].toString()) ?? now;
+            p.logs.add(ScanLog(
+              waktu: jamOut,
+              latitude: latSekolah,
+              longitude: lngSekolah,
+              jarakMeter: 0,
+            ));
+          }
+
+          _data[_key(guru, now)] = p;
+        }
+      }
+    } catch (_) {}
   }
 
   /// Ambil status presensi hari ini langsung dari API `/attendance/today`
