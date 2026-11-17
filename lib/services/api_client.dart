@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../constans/app_constants.dart';
 
@@ -48,9 +49,11 @@ class ApiClient {
     };
 
     if (_accessToken != null && _accessToken!.isNotEmpty) {
-      // Pertahanan ganda: kirim Authorization standar & X-Authorization
       headers['Authorization'] = 'Bearer $_accessToken';
-      headers['X-Authorization'] = 'Bearer $_accessToken';
+      // X-Authorization
+      if (!kIsWeb) {
+        headers['X-Authorization'] = 'Bearer $_accessToken';
+      }
     }
 
     return headers;

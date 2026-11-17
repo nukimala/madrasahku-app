@@ -37,15 +37,22 @@ class _GuruHomePageState extends State<GuruHomePage> {
     _muatData();
   }
 
+  // Jadwal ditampilkan segera setelah dimuat
   Future<void> _muatData() async {
-    await PresensiService.instance.sinkronkanHariIni();
-    await JadwalService.instance.ambilJadwalApi();
-    final tugas = await TugasService.instance.ambilDaftarTugas();
-    if (mounted) {
-      setState(() {
-        _tugasPerluDinilai = tugas.length;
-      });
-    }
+    try {
+      await JadwalService.instance.ambilJadwalApi();
+    } catch (_) {}
+    if (mounted) setState(() {});
+
+    try {
+      await PresensiService.instance.sinkronkanHariIni();
+    } catch (_) {}
+    if (mounted) setState(() {});
+
+    try {
+      final tugas = await TugasService.instance.ambilDaftarTugas();
+      if (mounted) setState(() => _tugasPerluDinilai = tugas.length);
+    } catch (_) {}
   }
 
   // Mengganti halaman melalui navbar.
@@ -74,7 +81,9 @@ class _GuruHomePageState extends State<GuruHomePage> {
       MaterialPageRoute(builder: (_) => const PresensiScanPage()),
     );
 
-    await PresensiService.instance.sinkronkanHariIni();
+    try {
+      await PresensiService.instance.sinkronkanHariIni();
+    } catch (_) {}
     if (mounted) {
       setState(() {});
     }
