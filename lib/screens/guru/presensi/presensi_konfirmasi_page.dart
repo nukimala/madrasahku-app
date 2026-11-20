@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../models/presensi_model.dart';
 import '../../../services/auth_service.dart';
@@ -16,7 +18,12 @@ class _ItemCek {
 
 class PresensiKonfirmasiPage extends StatefulWidget {
   final HasilLokasi lokasi;
-  const PresensiKonfirmasiPage({super.key, required this.lokasi});
+  final String qrToken;
+  const PresensiKonfirmasiPage({
+    super.key,
+    required this.lokasi,
+    required this.qrToken,
+  });
 
   @override
   State<PresensiKonfirmasiPage> createState() => _PresensiKonfirmasiPageState();
@@ -30,17 +37,22 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
 
   Future<void> _simpan() async {
     setState(() => _menyimpan = true);
-    final hasil =
-        await PresensiService.instance.simpan(_guru, widget.lokasi);
+    final hasil = await PresensiService.instance.simpan(
+      _guru,
+      widget.lokasi,
+      qrToken: widget.qrToken,
+    );
     if (!mounted) return;
     setState(() => _menyimpan = false);
 
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(hasil.pesan),
-        backgroundColor: hasil.berhasil ? _green : Colors.red,
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(hasil.pesan),
+          backgroundColor: hasil.berhasil ? _green : Colors.red,
+        ),
+      );
 
     if (hasil.berhasil) {
       Navigator.popUntil(context, (route) => route.isFirst);
@@ -57,8 +69,10 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
     final lengkap = service.sudahLengkap(_guru);
 
     final cek = <_ItemCek>[
-      _ItemCek('Berada di Lokasi',
-          lokasi.valid ? _StatusCek.ok : _StatusCek.gagal),
+      _ItemCek(
+        'Berada di Lokasi',
+        lokasi.valid ? _StatusCek.ok : _StatusCek.gagal,
+      ),
       if (jenis == JenisScan.datang)
         _ItemCek(
           status == StatusPresensi.tepatWaktu ? 'Tepat Waktu' : 'Terlambat',
@@ -80,7 +94,7 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,40 +105,43 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
                   children: [
                     const Icon(Icons.arrow_back_ios_new, size: 16),
                     const SizedBox(width: 12),
-                    Text('Presensi',
-                        style: AppTextStyle.headingSmall.copyWith(fontSize: 15)),
+                    Text(
+                      'Presensi',
+                      style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
               _kartu(
-                child: Text(_guru,
-                    style: AppTextStyle.bodyMedium
-                        .copyWith(fontWeight: FontWeight.w600)),
+                child: Text(
+                  _guru,
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               _kartuLokasi(lokasi),
               const SizedBox(height: 24),
-              Text('Deskripsi',
-                  style: AppTextStyle.headingSmall.copyWith(fontSize: 15)),
-              const SizedBox(height: 10),
-              _kartu(
-                child: Column(
-                  children: cek.map(_barisCek).toList(),
-                ),
+              Text(
+                'Deskripsi',
+                style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
               ),
+              const SizedBox(height: 10),
+              _kartu(child: Column(children: cek.map(_barisCek).toList())),
               if (!lokasi.valid || sisaJeda != null || lengkap) ...[
                 const SizedBox(height: 12),
                 Text(
                   lengkap
                       ? 'Presensi hari ini sudah lengkap (datang dan pulang).'
                       : !lokasi.valid
-                          ? lokasi.pesan
-                          : 'Tunggu ${service.formatSisa(sisaJeda!)} sebelum presensi pulang.',
+                      ? lokasi.pesan
+                      : 'Tunggu ${service.formatSisa(sisaJeda!)} sebelum presensi pulang.',
                   style: const TextStyle(color: Colors.red, fontSize: 12),
                 ),
               ],
-              const Spacer(),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -135,18 +152,25 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: const Color(0xFFD1D5DB),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15)),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
                   ),
                   child: _menyimpan
                       ? const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-                      : Text(labelTombol,
+                      : Text(
+                          labelTombol,
                           style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600)),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -165,45 +189,178 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
         borderRadius: BorderRadius.circular(10),
         boxShadow: const [
           BoxShadow(
-              color: Color(0x33CDC9C5), blurRadius: 15, offset: Offset(0, 2)),
+            color: Color(0x33CDC9C5),
+            blurRadius: 15,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       child: child,
     );
   }
 
-  Widget _kartuLokasi(HasilLokasi lokasi) {
-    final warna = lokasi.valid ? _green : Colors.red;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
-      decoration: BoxDecoration(
-        color: warna.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          Icon(lokasi.valid ? Icons.location_on : Icons.location_off,
-              size: 56, color: warna),
-          const SizedBox(height: 10),
-          Text(
-            lokasi.jarakMeter != null
-                ? 'Anda ${lokasi.jarakMeter!.round()} m dari titik sekolah'
-                : 'Lokasi tidak terbaca',
-            style: AppTextStyle.bodyMedium
-                .copyWith(fontWeight: FontWeight.w600, color: warna),
+  
+Widget _kartuLokasi(HasilLokasi lokasi) {
+  final sekolah = LatLng(
+    PresensiService.latSekolah,
+    PresensiService.lngSekolah,
+  );
+
+  final posisi =
+      lokasi.latitude != null && lokasi.longitude != null
+          ? LatLng(lokasi.latitude!, lokasi.longitude!)
+          : null;
+
+  final warna = lokasi.valid ? _green : Colors.red;
+
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: warna.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Icon(
+              lokasi.valid
+                  ? Icons.location_on
+                  : Icons.location_off,
+              size: 24,
+              color: warna,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                lokasi.jarakMeter != null
+                    ? 'Anda berada ${lokasi.jarakMeter!.round()} m dari titik sekolah'
+                    : 'Lokasi tidak terbaca',
+                style: AppTextStyle.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: warna,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 170,
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: posisi ?? sekolah,
+                initialZoom: 18,
+                minZoom: 5,
+                maxZoom: 19,
+              ),
+              children: [
+                // Peta OpenStreetMap
+                TileLayer(
+                  urlTemplate:
+                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName:
+                      'com.example.aplikasimadrasahku',
+                ),
+
+                // Radius lokasi sekolah
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: sekolah,
+                      radius: PresensiService.radiusMeter,
+                      useRadiusInMeter: true,
+                      color: _green.withOpacity(0.12),
+                      borderColor: _green,
+                      borderStrokeWidth: 1,
+                    ),
+                  ],
+                ),
+
+                // Marker lokasi sekolah dan guru
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: sekolah,
+                      width: 75,
+                      height: 65,
+                      child: const Column(
+                        children: [
+                          Icon(
+                            Icons.school,
+                            color: Colors.green,
+                            size: 32,
+                          ),
+                          Text(
+                            'Sekolah',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (posisi != null)
+                      Marker(
+                        point: posisi,
+                        width: 75,
+                        height: 65,
+                        child: const Column(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 36,
+                            ),
+                            Text(
+                              'Posisi Anda',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Atribusi OpenStreetMap
+                const RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution(
+                      '© OpenStreetMap contributors',
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            lokasi.pesan,
-            textAlign: TextAlign.center,
-            style: AppTextStyle.bodySmall
-                .copyWith(color: AppColors.textSecondary),
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+          lokasi.pesan,
+          textAlign: TextAlign.center,
+          style: AppTextStyle.bodySmall.copyWith(
+            color: AppColors.textSecondary,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _barisCek(_ItemCek item) {
     final (IconData ikon, Color warna) = switch (item.status) {
@@ -217,9 +374,13 @@ class _PresensiKonfirmasiPageState extends State<PresensiKonfirmasiPage> {
         children: [
           Icon(ikon, color: warna, size: 22),
           const SizedBox(width: 14),
-          Text(item.label,
-              style: AppTextStyle.bodyMedium
-                  .copyWith(fontSize: 13, fontWeight: FontWeight.w600)),
+          Text(
+            item.label,
+            style: AppTextStyle.bodyMedium.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

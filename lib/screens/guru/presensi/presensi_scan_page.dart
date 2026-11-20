@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -78,7 +77,12 @@ class _PresensiScanPageState extends State<PresensiScanPage> {
 
     await Navigator.push<void>(
       context,
-      MaterialPageRoute(builder: (_) => PresensiKonfirmasiPage(lokasi: lokasi)),
+      MaterialPageRoute(
+        builder: (_) => PresensiKonfirmasiPage(
+          lokasi: lokasi,
+          qrToken: kode!.trim(),
+        ),
+      ),
     );
 
     // Kembali dari halaman konfirmasi tanpa menyimpan -> scan lagi.
@@ -181,14 +185,6 @@ class _PresensiScanPageState extends State<PresensiScanPage> {
                   ),
                 ),
               ),
-              // Tombol simulasi hanya muncul saat debug (emulator tanpa kamera).
-              if (kDebugMode)
-                TextButton.icon(
-                  onPressed:
-                      _memproses ? null : () => _proses(PresensiService.kodeQr),
-                  icon: const Icon(Icons.bug_report_outlined),
-                  label: const Text('Simulasi scan QR (debug)'),
-                ),
             ],
           ),
         ),
