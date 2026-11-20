@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/materi_model.dart';
 import '../../../services/materi_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -66,10 +67,16 @@ class _Topik {
   final DateTime waktu;
   final List<_Item> items;
 
+  // Topik ini milik kelas & mapel yang mana (dipakai untuk filter).
+  String kelas;
+  String mapel;
+
   _Topik({
     required this.minggu,
     required this.nama,
     required this.waktu,
+    this.kelas = '',
+    this.mapel = '',
     List<_Item>? items,
   }) : items = items ?? [];
 
@@ -90,33 +97,71 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   static const Color _green = Color(0xFF219653);
   static const Color _topikBg = Color(0xFFF1EDEC);
 
-  static const _kelasList = [
-    'Kelas VII A',
-    'Kelas VII B',
-    'Kelas VIII A',
-    'Kelas VIII B',
-    'Kelas IX A',
-  ];
+  // Kelas & mapel yang diampu guru login (dari API).
+  List<GuruKelasMapel> _penugasan = [];
+  bool _memuat = true;
+  String? _error;
 
-  static const _mapelList = [
-    'Matematika',
-    'Bahasa Indonesia',
-    'IPA',
-    'IPS',
-    'Bahasa Inggris',
-  ];
-
-  String _kelas = 'Kelas VIII A';
-  String _mapel = 'Matematika';
+  String? _kelas;
+  String? _mapel;
   String _query = '';
 
   final Set<_Topik> _terbuka = {};
   final List<_Topik> _topik = [];
 
+  // Kelas unik yang diajar guru ini.
+  List<String> get _kelasList =>
+      _penugasan.map((e) => e.className).toSet().toList();
+
+  // Mapel yang diajar guru ini di kelas terpilih.
+  List<String> get _mapelList => _penugasan
+      .where((e) => e.className == _kelas)
+      .map((e) => e.subjectName)
+      .toSet()
+      .toList();
+
   @override
   void initState() {
     super.initState();
-    _muatMateriApi();
+    _muatAwal();
+  }
+
+  Future<void> _muatAwal() async {
+    setState(() {
+      _memuat = true;
+      _error = null;
+    });
+
+    try {
+      final p = await MateriService.instance.ambilKelasMapelGuru();
+      if (!mounted) return;
+      setState(() {
+        _penugasan = p;
+        _kelas = _kelasList.isNotEmpty ? _kelasList.first : null;
+        _mapel = _mapelList.isNotEmpty ? _mapelList.first : null;
+        _memuat = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _memuat = false;
+      });
+      return;
+    }
+
+    await _muatMateriApi();
+  }
+
+  void _gantiKelas(String v) {
+    setState(() {
+      _kelas = v;
+      // Mapel harus ikut kelas baru.
+      final daftar = _mapelList;
+      if (!daftar.contains(_mapel)) {
+        _mapel = daftar.isNotEmpty ? daftar.first : null;
+      }
+    });
   }
 
   Future<void> _muatMateriApi() async {
@@ -130,6 +175,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
             final t = _Topik(
               minggu: i + 1,
               nama: m.title,
+              kelas: m.className,
+              mapel: m.subjectName,
               waktu: DateTime.tryParse(m.createdAt) ?? DateTime.now(),
               items: [
                 _Item(
@@ -148,12 +195,14 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     } catch (_) {}
   }
 
-  // Filter pencarian.
+  // Filter kelas + mapel terpilih, pencarian.
   List<_Topik> get _hasil {
     final q = _query.toLowerCase();
-    if (q.isEmpty) return _topik;
 
     return _topik.where((t) {
+      if (t.kelas != _kelas || t.mapel != _mapel) return false;
+      if (q.isEmpty) return true;
+
       return t.judul.toLowerCase().contains(q) ||
           t.items.any((i) => i.judul.toLowerCase().contains(q));
     }).toList();
@@ -163,12 +212,22 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   // TAMBAH TOPIK
   // -------------------------------------------------------------------
   Future<void> _tambahTopik() async {
+    if (_kelas == null || _mapel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih kelas dan mapel dulu')),
+      );
+      return;
+    }
+
     final hasil = await showDialog<_Topik>(
       context: context,
       builder: (_) => const _TambahTopikDialog(),
     );
 
-    if (hasil == null) return;
+    if (hasil == null || !mounted) return;
+
+    hasil.kelas = _kelas!;
+    hasil.mapel = _mapel!;
 
     setState(() {
       _topik.add(hasil);
@@ -244,8 +303,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       MaterialPageRoute(
         builder: (_) => TambahMateriPage(
           topik: topik.judul,
-          kelas: _kelas,
-          mapel: _mapel,
+          kelas: _kelas ?? '',
+          mapel: _mapel ?? '',
         ),
       ),
     );
@@ -276,8 +335,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       MaterialPageRoute(
         builder: (_) => TambahTugasPage(
           topik: topik.judul,
-          kelas: _kelas,
-          mapel: _mapel,
+          kelas: _kelas ?? '',
+          mapel: _mapel ?? '',
         ),
       ),
     );
@@ -314,8 +373,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       MaterialPageRoute(
         builder: (_) => EditMateriPage(
           topik: topik.judul,
-          kelas: _kelas,
-          mapel: _mapel,
+          kelas: _kelas ?? '',
+          mapel: _mapel ?? '',
           judulAwal: item.judul,
           deskripsiAwal: item.deskripsi,
           namaFileAwal: item.namaFile,
@@ -359,8 +418,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       MaterialPageRoute(
         builder: (_) => EditTugasPage(
           topik: topik.judul,
-          kelas: _kelas,
-          mapel: _mapel,
+          kelas: _kelas ?? '',
+          mapel: _mapel ?? '',
           judulAwal: item.judul,
           deskripsiAwal: item.deskripsi,
           mulaiAwal: mulaiAwal,
@@ -428,6 +487,73 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   }
 
   // -------------------------------------------------------------------
+  // ISI AREA DAFTAR TOPIK (loading / kosong / list)
+  // -------------------------------------------------------------------
+  Widget _buildIsi(List<_Topik> daftar) {
+    if (_memuat) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: AppTextStyle.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _muatAwal,
+                child: const Text('Coba lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_penugasan.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Anda belum memiliki kelas/mapel yang diampu.',
+            textAlign: TextAlign.center,
+            style: AppTextStyle.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (daftar.isEmpty) {
+      return Center(
+        child: Text(
+          'Belum ada topik.',
+          style: AppTextStyle.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 90),
+      itemCount: daftar.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (_, i) => _buildTopik(daftar[i]),
+    );
+  }
+
+  // -------------------------------------------------------------------
   // BUILD
   // -------------------------------------------------------------------
   @override
@@ -454,7 +580,8 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                     child: _Dropdown(
                       value: _kelas,
                       items: _kelasList,
-                      onChanged: (v) => setState(() => _kelas = v),
+                      hint: 'Pilih kelas',
+                      onChanged: _gantiKelas,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -462,6 +589,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                     child: _Dropdown(
                       value: _mapel,
                       items: _mapelList,
+                      hint: 'Pilih mapel',
                       onChanged: (v) => setState(() => _mapel = v),
                     ),
                   ),
@@ -486,23 +614,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
               const SizedBox(height: 12),
 
-              Expanded(
-                child: daftar.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Belum ada topik.',
-                          style: AppTextStyle.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 90),
-                        itemCount: daftar.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _buildTopik(daftar[i]),
-                      ),
-              ),
+              Expanded(child: _buildIsi(daftar)),
             ],
           ),
         ),
@@ -910,14 +1022,16 @@ class _Kotak extends StatelessWidget {
 }
 
 class _Dropdown extends StatelessWidget {
-  final String value;
+  final String? value;
   final List<String> items;
+  final String hint;
   final ValueChanged<String> onChanged;
 
   const _Dropdown({
     required this.value,
     required this.items,
     required this.onChanged,
+    this.hint = '',
   });
 
   @override
@@ -925,7 +1039,8 @@ class _Dropdown extends StatelessWidget {
     return _Kotak(
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: items.contains(value) ? value : null,
+          hint: Text(hint, style: const TextStyle(fontSize: 12)),
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, size: 20),
           style: const TextStyle(fontSize: 12, color: Colors.black),

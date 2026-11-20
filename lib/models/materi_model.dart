@@ -32,3 +32,32 @@ class MateriItem {
     );
   }
 }
+
+class GuruKelasMapel {
+  final int classSubjectId;
+  final int classId;
+  final String className;
+  final int subjectId;
+  final String subjectName;
+
+  const GuruKelasMapel({
+    required this.classSubjectId,
+    required this.classId,
+    required this.className,
+    required this.subjectId,
+    required this.subjectName,
+  });
+
+  static int _toInt(dynamic v) =>
+      v is int ? v : int.tryParse(v.toString()) ?? 0;
+
+  factory GuruKelasMapel.fromJson(Map<String, dynamic> json) {
+    return GuruKelasMapel(
+      classSubjectId: _toInt(json['class_subject_id']),
+      classId: _toInt(json['class_id']),
+      className: json['class_name'] ?? '',
+      subjectId: _toInt(json['subject_id']),
+      subjectName: json['subject_name'] ?? '',
+    );
+  }
+}
