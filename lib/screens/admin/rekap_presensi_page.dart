@@ -57,7 +57,6 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
   late final List<String> _opsiBulan;
 
   bool _isLoading = false;
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -120,7 +119,6 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
   Future<void> _muatDataApi() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
@@ -151,32 +149,37 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
 
       if (!mounted) return;
 
+      final localRecords = PresensiService.instance.ambilRekapLokal();
       final List<_CatatanPresensi> list = [];
+      final recordKeys = <String>{};
 
-      if (records.isNotEmpty) {
-        for (final item in records) {
-          if (item is Map) {
-            final dStr = item['attendance_date'] ?? item['tanggal'] ?? item['date'];
-            final tgl = dStr != null ? DateTime.tryParse(dStr.toString()) : null;
-            final guruName = (item['teacher_name'] ?? item['nama'] ?? 'Guru').toString();
-            final rowMapel = (item['mapel'] ?? item['subject_name'] ?? 'Umum').toString();
-            final rowKelas = (item['kelas'] ?? item['class_name'] ?? 'Semua Kelas').toString();
-            final isPulang = item['pulang'] == true || item['check_out_at'] != null;
+      for (final item in [...records, ...localRecords]) {
+        if (item is! Map) continue;
 
-            if (tgl != null) {
-              list.add(_CatatanPresensi(
-                nama: guruName,
-                mapel: rowMapel,
-                kelas: rowKelas,
-                tanggal: tgl,
-                pulang: isPulang,
-              ));
-            }
-          }
-        }
-      } else {
-        // Fallback data simulasi lokal jika database masih kosong atau offline
-        list.addAll(_generateFallbackData());
+        final dStr =
+            item['attendance_date'] ?? item['tanggal'] ?? item['date'];
+        final tgl = dStr != null ? DateTime.tryParse(dStr.toString()) : null;
+        if (tgl == null) continue;
+
+        final guruName =
+            (item['teacher_name'] ?? item['nama'] ?? 'Guru').toString();
+        final key =
+            '${guruName.trim().toLowerCase()}|${tgl.year}-${tgl.month}-${tgl.day}';
+        if (!recordKeys.add(key)) continue;
+
+        final rowMapel =
+            (item['mapel'] ?? item['subject_name'] ?? 'Umum').toString();
+        final rowKelas =
+            (item['kelas'] ?? item['class_name'] ?? 'Semua Kelas').toString();
+        final isPulang = item['pulang'] == true || item['check_out_at'] != null;
+
+        list.add(_CatatanPresensi(
+          nama: guruName,
+          mapel: rowMapel,
+          kelas: rowKelas,
+          tanggal: tgl,
+          pulang: isPulang,
+        ));
       }
 
       setState(() {
@@ -186,51 +189,19 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _catatan = _generateFallbackData();
+        _catatan = PresensiService.instance.ambilRekapLokal().map((item) {
+          final tanggal = DateTime.parse(item['attendance_date'] as String);
+          return _CatatanPresensi(
+            nama: item['teacher_name'] as String,
+            mapel: item['mapel'] as String,
+            kelas: item['kelas'] as String,
+            tanggal: tanggal,
+            pulang: item['check_out_at'] != null,
+          );
+        }).toList();
         _isLoading = false;
       });
     }
-  }
-
-  List<_CatatanPresensi> _generateFallbackData() {
-    final now = DateTime.now();
-    return [
-      _CatatanPresensi(
-        nama: 'Ahmad Fauzi, M.Pd.',
-        mapel: 'Matematika',
-        kelas: 'Kelas VIII A',
-        tanggal: now,
-        pulang: true,
-      ),
-      _CatatanPresensi(
-        nama: 'Siti Nurhaliza, S.Pd.',
-        mapel: 'Bahasa Indonesia',
-        kelas: 'Kelas VIII A',
-        tanggal: now,
-        pulang: true,
-      ),
-      _CatatanPresensi(
-        nama: 'Budi Santoso, S.Si.',
-        mapel: 'IPA',
-        kelas: 'Kelas VII A',
-        tanggal: now.subtract(const Duration(days: 1)),
-        pulang: false,
-      ),
-      _CatatanPresensi(
-        nama: 'Nur Aini, S.Pd.',
-        mapel: 'Bahasa Inggris',
-        kelas: 'Kelas VIII B',
-        tanggal: now.subtract(const Duration(days: 2)),
-        pulang: true,
-      ),
-      _CatatanPresensi(
-        nama: 'Rizky Maulana, S.Ag.',
-        mapel: 'PAI',
-        kelas: 'Kelas IX A',
-        tanggal: now.subtract(const Duration(days: 3)),
-        pulang: true,
-      ),
-    ];
   }
 
   String _bulanKey(DateTime d) =>
