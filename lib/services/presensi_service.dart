@@ -332,4 +332,51 @@ class PresensiService {
     }
     return [];
   }
+
+  /// Ambil rekapitulasi presensi admin dari API `/attendance/recap`
+  Future<List<dynamic>> ambilRekapAdminApi({
+    String? month,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? mapel,
+    String? kelas,
+  }) async {
+    final query = <String, String>{};
+    if (month != null && month.isNotEmpty && month != 'semua') {
+      query['month'] = month;
+    }
+    if (startDate != null) {
+      query['start_date'] =
+          '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+    }
+    if (endDate != null) {
+      query['end_date'] =
+          '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}';
+    }
+    if (mapel != null && mapel.isNotEmpty && mapel != 'Semua Mapel') {
+      query['mapel'] = mapel;
+    }
+    if (kelas != null && kelas.isNotEmpty && kelas != 'Semua Kelas') {
+      query['kelas'] = kelas;
+    }
+
+    try {
+      final res = await ApiClient.instance.get(
+        '/attendance/recap',
+        queryParams: query.isNotEmpty ? query : null,
+      );
+
+      if (res.success && res.data != null) {
+        if (res.data is List) return res.data as List;
+        if (res.data is Map && res.data['data'] is List) {
+          return res.data['data'] as List;
+        }
+        if (res.data is Map && res.data['items'] is List) {
+          return res.data['items'] as List;
+        }
+      }
+    } catch (_) {}
+
+    return [];
+  }
 }

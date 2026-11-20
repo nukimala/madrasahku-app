@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/guru_model.dart';
+import '../../../services/guru_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_guru_page.dart';
@@ -14,16 +15,18 @@ class DataGuruPage extends StatefulWidget {
 
 class _DataGuruPageState extends State<DataGuruPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _keyword = '';
+  final GuruService _guruService = GuruService();
 
-  // Data dummy, nanti diganti dari service/database
-  final List<GuruItem> _guruList = [
-    const GuruItem(nama: 'Ahmad Fauzi', mapel: 'Matematika'),
-    const GuruItem(nama: 'Siti Nurhaliza', mapel: 'Bahasa Indonesia'),
-    const GuruItem(nama: 'Budi Santoso', mapel: 'IPA'),
-    const GuruItem(nama: 'Nur Aini', mapel: 'Bahasa Inggris'),
-    const GuruItem(nama: 'Rizky Maulana', mapel: 'PAI'),
-  ];
+  String _keyword = '';
+  List<GuruItem> _guruList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchGuruList();
+  }
 
   @override
   void dispose() {
@@ -31,8 +34,33 @@ class _DataGuruPageState extends State<DataGuruPage> {
     super.dispose();
   }
 
+  Future<void> _fetchGuruList() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final list = await _guruService.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _guruList = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
   List<GuruItem> get _filtered => _guruList
-      .where((g) => g.nama.toLowerCase().contains(_keyword.toLowerCase()))
+      .where((g) =>
+          g.nama.toLowerCase().contains(_keyword.toLowerCase()) ||
+          g.mapel.toLowerCase().contains(_keyword.toLowerCase()) ||
+          g.nipNuptk.toLowerCase().contains(_keyword.toLowerCase()))
       .toList();
 
   Future<void> _openTambah() async {
@@ -43,14 +71,28 @@ class _DataGuruPageState extends State<DataGuruPage> {
 
     if (!mounted || guru == null) return;
 
-    setState(() {
-      _guruList.insert(0, guru);
-      _keyword = '';
-      _searchController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data guru berhasil ditambahkan')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Menyimpan data guru...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      await _guruService.create(guru);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data guru berhasil ditambahkan')),
+      );
+      _fetchGuruList();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _openEdit(GuruItem guru) async {
@@ -61,17 +103,39 @@ class _DataGuruPageState extends State<DataGuruPage> {
 
     if (!mounted || updatedGuru == null) return;
 
-    final index = _guruList.indexOf(guru);
-    if (index == -1) return;
+    final id = guru.id ?? updatedGuru.id;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID guru tidak ditemukan untuk pembaruan'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
-    setState(() {
-      _guruList[index] = updatedGuru;
-      _keyword = '';
-      _searchController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data guru berhasil diperbarui')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Memperbarui data guru...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      await _guruService.update(id, updatedGuru);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data guru berhasil diperbarui')),
+      );
+      _fetchGuruList();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _confirmDelete(GuruItem guru) {
@@ -92,9 +156,35 @@ class _DataGuruPageState extends State<DataGuruPage> {
             child: const Text('Batal', style: TextStyle(fontSize: 15)),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => _guruList.remove(guru));
+            onPressed: () async {
               Navigator.pop(ctx);
+              if (guru.id == null) {
+                setState(() => _guruList.remove(guru));
+                return;
+              }
+
+              try {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Menghapus data guru...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                await _guruService.delete(guru.id!);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Data guru berhasil dihapus')),
+                );
+                _fetchGuruList();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst('Exception: ', '')),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
             },
             child: const Text(
               'Hapus',
@@ -172,7 +262,7 @@ class _DataGuruPageState extends State<DataGuruPage> {
                 style: AppTextStyle.bodyLarge.copyWith(fontSize: 16),
                 textAlignVertical: TextAlignVertical.center,
                 decoration: InputDecoration(
-                  hintText: 'Cari nama guru...',
+                  hintText: 'Cari nama guru / mapel...',
                   hintStyle: AppTextStyle.hint.copyWith(fontSize: 16),
                   prefixIcon: const Icon(
                     Icons.search,
@@ -186,34 +276,93 @@ class _DataGuruPageState extends State<DataGuruPage> {
             ),
             const SizedBox(height: 24),
 
-            // List guru
+            // Content
             Expanded(
-              child: data.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Data guru tidak ditemukan',
-                        style: AppTextStyle.bodyMedium.copyWith(
-                          fontSize: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, i) {
-                        final guru = data[i];
-                        return _GuruCard(
-                          guru: guru,
-                          onEdit: () => _openEdit(guru),
-                          onDelete: () => _confirmDelete(guru),
-                        );
-                      },
-                    ),
+              child: _buildContent(data),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent(List<GuruItem> data) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: AppTextStyle.bodyMedium.copyWith(
+                fontSize: 15,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _fetchGuruList,
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (data.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchGuruList,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.4,
+              child: Center(
+                child: Text(
+                  _keyword.isEmpty
+                      ? 'Belum ada data guru'
+                      : 'Data guru "$_keyword" tidak ditemukan',
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchGuruList,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: data.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        itemBuilder: (context, i) {
+          final guru = data[i];
+          return _GuruCard(
+            guru: guru,
+            onEdit: () => _openEdit(guru),
+            onDelete: () => _confirmDelete(guru),
+          );
+        },
       ),
     );
   }
@@ -269,11 +418,23 @@ class _GuruCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Guru ${guru.mapel}',
+                  guru.mapel.isNotEmpty ? 'Guru ${guru.mapel}' : 'Guru Pengajar',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
                 ),
+                if (guru.nipNuptk.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'NIP/NUPTK: ${guru.nipNuptk}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyle.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

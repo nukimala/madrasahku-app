@@ -152,4 +152,55 @@ class ApiClient {
       );
     }
   }
+
+  Future<ApiResponseData> put(
+    String endpoint, {
+    Map<String, dynamic>? body,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      final res = await http
+          .put(
+            uri,
+            headers: _buildHeaders(),
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(AppConstants.connectTimeout);
+      return _handleResponse(res);
+    } on SocketException {
+      return const ApiResponseData(
+        success: false,
+        errorMessage: 'Koneksi internet bermasalah / server offline.',
+        statusCode: 0,
+      );
+    } catch (e) {
+      return ApiResponseData(
+        success: false,
+        errorMessage: 'Gagal memperbarui data: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  Future<ApiResponseData> delete(String endpoint) async {
+    try {
+      final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      final res = await http
+          .delete(uri, headers: _buildHeaders())
+          .timeout(AppConstants.connectTimeout);
+      return _handleResponse(res);
+    } on SocketException {
+      return const ApiResponseData(
+        success: false,
+        errorMessage: 'Koneksi internet bermasalah / server offline.',
+        statusCode: 0,
+      );
+    } catch (e) {
+      return ApiResponseData(
+        success: false,
+        errorMessage: 'Gagal menghapus data: $e',
+        statusCode: 0,
+      );
+    }
+  }
 }

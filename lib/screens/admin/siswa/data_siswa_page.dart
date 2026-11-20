@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/siswa_model.dart';
+import '../../../services/siswa_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_siswa_page.dart';
@@ -14,16 +15,18 @@ class DataSiswaPage extends StatefulWidget {
 
 class _DataSiswaPageState extends State<DataSiswaPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _keyword = '';
+  final SiswaService _siswaService = SiswaService();
 
-  // Data dummy, nanti diganti dari service/database
-  final List<SiswaItem> _siswaList = [
-    const SiswaItem(nama: 'Ahmad Rifai', kelas: 'VIII A'),
-    const SiswaItem(nama: 'Siti Aisyah', kelas: 'VIII A'),
-    const SiswaItem(nama: 'Fahri Maulana', kelas: 'VIII A'),
-    const SiswaItem(nama: 'Naila Putri', kelas: 'VIII A'),
-    const SiswaItem(nama: 'Muhammad Iqbal', kelas: 'VIII A'),
-  ];
+  String _keyword = '';
+  List<SiswaItem> _siswaList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSiswaList();
+  }
 
   @override
   void dispose() {
@@ -31,8 +34,33 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
     super.dispose();
   }
 
+  Future<void> _fetchSiswaList() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final list = await _siswaService.fetchAll();
+      if (!mounted) return;
+      setState(() {
+        _siswaList = list;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
   List<SiswaItem> get _filtered => _siswaList
-      .where((s) => s.nama.toLowerCase().contains(_keyword.toLowerCase()))
+      .where((s) =>
+          s.nama.toLowerCase().contains(_keyword.toLowerCase()) ||
+          s.kelas.toLowerCase().contains(_keyword.toLowerCase()) ||
+          s.nis.toLowerCase().contains(_keyword.toLowerCase()))
       .toList();
 
   Future<void> _openTambah() async {
@@ -43,14 +71,28 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
 
     if (!mounted || siswa == null) return;
 
-    setState(() {
-      _siswaList.insert(0, siswa);
-      _keyword = '';
-      _searchController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data siswa berhasil ditambahkan')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Menyimpan data siswa...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      await _siswaService.create(siswa);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data siswa berhasil ditambahkan')),
+      );
+      _fetchSiswaList();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _openEdit(SiswaItem siswa) async {
@@ -61,17 +103,39 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
 
     if (!mounted || updatedSiswa == null) return;
 
-    final index = _siswaList.indexOf(siswa);
-    if (index == -1) return;
+    final id = siswa.id ?? updatedSiswa.id;
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ID siswa tidak ditemukan untuk pembaruan'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
 
-    setState(() {
-      _siswaList[index] = updatedSiswa;
-      _keyword = '';
-      _searchController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Data siswa berhasil diperbarui')),
-    );
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Memperbarui data siswa...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      await _siswaService.update(id, updatedSiswa);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Data siswa berhasil diperbarui')),
+      );
+      _fetchSiswaList();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   void _confirmDelete(SiswaItem siswa) {
@@ -92,9 +156,35 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
             child: const Text('Batal', style: TextStyle(fontSize: 15)),
           ),
           TextButton(
-            onPressed: () {
-              setState(() => _siswaList.remove(siswa));
+            onPressed: () async {
               Navigator.pop(ctx);
+              if (siswa.id == null) {
+                setState(() => _siswaList.remove(siswa));
+                return;
+              }
+
+              try {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Menghapus data siswa...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                await _siswaService.delete(siswa.id!);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Data siswa berhasil dihapus')),
+                );
+                _fetchSiswaList();
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst('Exception: ', '')),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
             },
             child: const Text(
               'Hapus',
@@ -119,8 +209,11 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
         titleSpacing: 0,
         toolbarHeight: 64,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back,
-              color: AppColors.textPrimary, size: 28),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: AppColors.textPrimary,
+            size: 28,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -169,10 +262,13 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
                 style: AppTextStyle.bodyLarge.copyWith(fontSize: 16),
                 textAlignVertical: TextAlignVertical.center,
                 decoration: InputDecoration(
-                  hintText: 'Cari nama siswa...',
+                  hintText: 'Cari nama siswa / kelas...',
                   hintStyle: AppTextStyle.hint.copyWith(fontSize: 16),
-                  prefixIcon: const Icon(Icons.search,
-                      size: 26, color: AppColors.textPrimary),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 26,
+                    color: AppColors.textPrimary,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -180,34 +276,93 @@ class _DataSiswaPageState extends State<DataSiswaPage> {
             ),
             const SizedBox(height: 24),
 
-            // List siswa
+            // Content
             Expanded(
-              child: data.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Data siswa tidak ditemukan',
-                        style: AppTextStyle.bodyMedium.copyWith(
-                          fontSize: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, i) {
-                        final siswa = data[i];
-                        return _SiswaCard(
-                          siswa: siswa,
-                          onEdit: () => _openEdit(siswa),
-                          onDelete: () => _confirmDelete(siswa),
-                        );
-                      },
-                    ),
+              child: _buildContent(data),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent(List<SiswaItem> data) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.cloud_off, size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: AppTextStyle.bodyMedium.copyWith(
+                fontSize: 15,
+                color: AppColors.error,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _fetchSiswaList,
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (data.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchSiswaList,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.4,
+              child: Center(
+                child: Text(
+                  _keyword.isEmpty
+                      ? 'Belum ada data siswa'
+                      : 'Data siswa "$_keyword" tidak ditemukan',
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchSiswaList,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: data.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        itemBuilder: (context, i) {
+          final siswa = data[i];
+          return _SiswaCard(
+            siswa: siswa,
+            onEdit: () => _openEdit(siswa),
+            onDelete: () => _confirmDelete(siswa),
+          );
+        },
       ),
     );
   }
@@ -267,11 +422,25 @@ class _SiswaCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Kelas ${siswa.kelas}',
+                  siswa.kelas.isNotEmpty
+                      ? (siswa.kelas.toLowerCase().startsWith('kelas') ? siswa.kelas : 'Kelas ${siswa.kelas}')
+                      : 'Belum ada kelas',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.bodySmall.copyWith(fontSize: 13),
                 ),
+                if (siswa.nis.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'NIS: ${siswa.nis}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyle.bodySmall.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -295,8 +464,11 @@ class _SiswaCard extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             padding: const EdgeInsets.all(4),
-            icon: const Icon(Icons.more_vert,
-                size: 28, color: AppColors.textPrimary),
+            icon: const Icon(
+              Icons.more_vert,
+              size: 28,
+              color: AppColors.textPrimary,
+            ),
             onSelected: (v) {
               if (v == 'edit') onEdit();
               if (v == 'hapus') onDelete();
@@ -315,8 +487,10 @@ class _SiswaCard extends StatelessWidget {
                 height: 48,
                 child: Text(
                   'Hapus',
-                  style: AppTextStyle.bodyMedium
-                      .copyWith(fontSize: 15, color: AppColors.error),
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 15,
+                    color: AppColors.error,
+                  ),
                 ),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/siswa_model.dart';
+import '../../../services/siswa_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -15,6 +16,7 @@ class TambahSiswaPage extends StatefulWidget {
 
 class _TambahSiswaPageState extends State<TambahSiswaPage> {
   final _formKey = GlobalKey<FormState>();
+  final _siswaService = SiswaService();
 
   final _namaController = TextEditingController();
   final _nisController = TextEditingController();
@@ -23,8 +25,8 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
   String? _selectedKelas;
   String? _selectedJenisKelamin;
 
-  // Daftar dummy, nanti ambil dari data Kelas
-  final List<String> _kelasList = [
+  List<KelasOption> _kelasOptions = [];
+  List<String> _kelasList = [
     'VII A',
     'VII B',
     'VIII A',
@@ -52,11 +54,27 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
         RegExp(r'^Kelas\s+', caseSensitive: false),
         '',
       );
-      _selectedKelas = _kelasList.contains(kelas) ? kelas : null;
+      _selectedKelas = _kelasList.contains(kelas) ? kelas : (kelas.isNotEmpty ? kelas : null);
       _selectedJenisKelamin = _jenisKelaminList.contains(siswa.jenisKelamin)
           ? siswa.jenisKelamin
           : null;
     }
+    _loadKelas();
+  }
+
+  Future<void> _loadKelas() async {
+    try {
+      final list = await _siswaService.fetchKelas();
+      if (mounted && list.isNotEmpty) {
+        setState(() {
+          _kelasOptions = list;
+          _kelasList = list.map((e) => e.name).toList();
+          if (_selectedKelas != null && !_kelasList.contains(_selectedKelas)) {
+            _kelasList.insert(0, _selectedKelas!);
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -97,11 +115,15 @@ class _TambahSiswaPageState extends State<TambahSiswaPage> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
+    final matched = _kelasOptions.where((k) => k.name == _selectedKelas).firstOrNull;
+
     Navigator.pop(
       context,
       SiswaItem(
+        id: widget.siswa?.id,
         nama: _namaController.text.trim(),
         nis: _nisController.text.trim(),
+        kelasId: matched?.id ?? widget.siswa?.kelasId,
         kelas: _selectedKelas!,
         jenisKelamin: _selectedJenisKelamin!,
         tanggalLahir: _tanggalController.text.trim(),

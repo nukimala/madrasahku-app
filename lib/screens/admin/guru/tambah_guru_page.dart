@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/guru_model.dart';
+import '../../../services/guru_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -15,6 +16,7 @@ class TambahGuruPage extends StatefulWidget {
 
 class _TambahGuruPageState extends State<TambahGuruPage> {
   final _formKey = GlobalKey<FormState>();
+  final _guruService = GuruService();
 
   final _namaController = TextEditingController();
   final _nipController = TextEditingController();
@@ -23,8 +25,7 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
 
   String? _selectedMapel;
 
-  // Daftar dummy, nanti ambil dari data Mata Pelajaran
-  final List<String> _mapelList = [
+  List<String> _mapelList = [
     'Matematika',
     'Bahasa Indonesia',
     'Bahasa Inggris',
@@ -44,8 +45,23 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
       _nipController.text = guru.nipNuptk;
       _emailController.text = guru.email;
       _teleponController.text = guru.telepon;
-      _selectedMapel = guru.mapel;
+      _selectedMapel = guru.mapel.isNotEmpty ? guru.mapel : null;
     }
+    _loadMapel();
+  }
+
+  Future<void> _loadMapel() async {
+    try {
+      final list = await _guruService.fetchMapel();
+      if (mounted && list.isNotEmpty) {
+        setState(() {
+          _mapelList = list;
+          if (_selectedMapel != null && !_mapelList.contains(_selectedMapel)) {
+            _mapelList.insert(0, _selectedMapel!);
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -63,6 +79,7 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
     Navigator.pop(
       context,
       GuruItem(
+        id: widget.guru?.id,
         nama: _namaController.text.trim(),
         nipNuptk: _nipController.text.trim(),
         mapel: _selectedMapel!,
