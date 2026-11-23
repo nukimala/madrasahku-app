@@ -5,8 +5,16 @@ class MateriService {
   MateriService._();
   static final MateriService instance = MateriService._();
 
-  Future<List<MateriItem>> ambilDaftarMateri() async {
-    final res = await ApiClient.instance.get('/materials');
+  Future<List<MateriItem>> ambilDaftarMateri({int? classId}) async {
+    final params = <String, String>{};
+    if (classId != null && classId > 0) {
+      params['class_id'] = classId.toString();
+    }
+
+    final res = await ApiClient.instance.get(
+      '/materials',
+      queryParams: params.isNotEmpty ? params : null,
+    );
     if (res.success && res.data != null && res.data['materials'] is List) {
       final list = res.data['materials'] as List;
       return list

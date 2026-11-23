@@ -5,12 +5,14 @@ class TugasService {
   TugasService._();
   static final TugasService instance = TugasService._();
 
-  /// Ambil daftar tugas dari server API `/assignments`
-  Future<List<TugasItem>> ambilDaftarTugas({bool hanyaBelumTenggat = false}) async {
+    // Ambil daftar tugas dari server API `/assignments`
+  Future<List<TugasItem>> ambilDaftarTugas({int? classId}) async {
     final params = <String, String>{};
-    if (hanyaBelumTenggat) params['open'] = '1';
+    if (classId != null && classId > 0) {
+      params['class_id'] = classId.toString();
+    }
 
-    final res = await ApiClient.instance.get('/assignments', queryParams: params);
+    final res = await ApiClient.instance.get('/assignments', queryParams: params.isNotEmpty ? params : null);
     if (res.success && res.data != null && res.data['assignments'] is List) {
       final list = res.data['assignments'] as List;
       return list

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/auth_service.dart';
 import '../../../services/materi_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -19,64 +20,87 @@ class MateriPage extends StatefulWidget {
 }
 
 class _MateriPageState extends State<MateriPage> {
-  static const _kelas = 'Kelas VIII A';
+  // Ambil kelas dari akun siswa yang sedang login (fallback ke 'Kelas VIII A' kalau kosong)
+  String _kelas = 'Kelas VIII A';
 
-  // Daftar mata pelajaran (sesuai kode bidang studi).
-  static const _mapelList = [
-    'Matematika',
-    "Qur'an Hadits",
-    'Akidah Akhlaq',
-    'Fiqih',
-    'SKI',
-    'Bahasa Arab',
-    'PPKn',
-    'Bhs. Indonesia',
-    'IPS Terpadu',
-    'IPA Terpadu',
-    'Bahasa Inggris',
-    'Penjaskes',
-    'SBK/Prakarya',
-    'Bahasa Jawa',
-    'TIK',
-  ];
+  // Daftar mata pelajaran akan diisi dinamis dari data server
+  List<String> _mapelList = ['Matematika'];
 
-  // Data materi dari database server API
+  // Data materi dari database server API (disimpan per mapel)
   final Map<String, List<_Topik>> _data = {};
 
   String _selectedMapel = 'Matematika';
   String _query = '';
   final Set<int> _expanded = {};
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _muatMateri();
+    _muatDataDanMateri();
   }
 
-  Future<void> _muatMateri() async {
+  Future<void> _muatDataDanMateri() async {
+    setState(() => _loading = true);
     try {
-      final items = await MateriService.instance.ambilDaftarMateri();
-      if (items.isNotEmpty && mounted) {
-        setState(() {
-          for (final item in items) {
-            final mapel = item.subjectName;
-            final topiks = _data.putIfAbsent(mapel, () => []);
-            final topicName = 'Materi ${item.className} - $mapel';
-            final existing = topiks.where((t) => t.title == topicName).toList();
-            final t = existing.isNotEmpty ? existing.first : _Topik(topicName, []);
-            if (existing.isEmpty) topiks.add(t);
-
-            t.items.add(_Item(
-              item.title,
-              item.description ?? 'Silakan pelajari materi berikut',
-              _Status.lanjutkan,
-              isTugas: false,
-              badge: null,
-            ));
-          }
-        });
+      // 1. Ambil info kelas dari user yang login (fallback ke default kalau belum ada)
+      final auth = AuthService.instance;
+      if (auth.currentRole == 'siswa') {
+        // TODO: Nanti ambil kelas dari API /me atau SiswaService
+        // Untuk sekarang pakai default
+        _kelas = 'Kelas VIII A';
       }
-    } catch (_) {}
+
+      // 2. Ambil daftar materi dari API
+      final items = await MateriService.instance.ambilDaftarMateri();
+      
+      if (items.isNotEmpty && mounted) {
+        final Map<String, List<_Topik>> tempData = {};
+        final Set<String> mapelSet = {};
+
+        for (final item in items) {
+          final mapel = item.subjectName.isNotEmpty ? item.subjectName : 'Umum';
+          mapelSet.add(mapel);
+
+          final topiks = tempData.putIfAbsent(mapel, () => []);
+          final topicName = item.title.isNotEmpty ? item.title : 'Materi Pembelajaran';
+          
+          // Cari apakah topik sudah ada
+          var existing = topiks.where((t) => t.title == topicName).toList();
+          _Topik t;
+          if (existing.isEmpty) {
+            t = _Topik(topicName, []);
+            topiks.add(t);
+          } else {
+            t = existing.first;
+          }
+
+          t.items.add(_Item(
+            item.title,
+            item.description ?? 'Silakan pelajari materi berikut',
+            _Status.lanjutkan,
+            isTugas: false,
+            badge: null,
+          ));
+        }
+
+        setState(() {
+          _data.clear();
+          _data.addAll(tempData);
+          if (mapelSet.isNotEmpty) {
+            _mapelList = mapelSet.toList();
+            if (!_mapelList.contains(_selectedMapel)) {
+              _selectedMapel = _mapelList.first;
+            }
+          }
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   List<_Topik> get _topikList {
@@ -247,7 +271,9 @@ class _MateriPageState extends State<MateriPage> {
 
             // Daftar topik (accordion).
             Expanded(
-              child: topikList.isEmpty
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : topikList.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
