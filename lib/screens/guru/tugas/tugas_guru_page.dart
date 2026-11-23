@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/siswa_model.dart';
+import '../../../models/tugas_model.dart';
 import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
 import 'pengumpulan_tugas.dart';
-import '../../../models/tugas_model.dart';
 
 class TugasGuruPage extends StatefulWidget {
   const TugasGuruPage({super.key});
@@ -66,6 +67,7 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
                   judul: t.title,
                   deadline: deadline,
                   siswa: [],
+                  tugasItem: t, // SIMPAN referensi TugasItem asli
                 ),
               ],
             );
@@ -96,8 +98,58 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
     }).toList();
   }
 
-  // Buka halaman penilaian tugas.
+  // Buka halaman penilaian tugas - fetch detail pengumpulan dulu.
   Future<void> _bukaTugas(TopikTugas topik, TugasGuru tugas) async {
+    final tugasItem = tugas.tugasItem;
+    if (tugasItem == null) {
+      // Fallback: buka tanpa data detail
+      await _navKePengumpulan(topik, tugas, null);
+      return;
+    }
+
+    // Tampilkan loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 1. Fetch detail pengumpulan dari API
+      final detailRes = await TugasService.instance.ambilDetailPengumpulanTugas(tugasItem.id);
+      
+      // 2. Fetch daftar siswa kelas ini
+      final siswaList = tugasItem.classId > 0
+          ? await TugasService.instance.ambilSiswaKelas(tugasItem.classId)
+          : <SiswaItem>[];
+
+      if (!mounted) return;
+      Navigator.pop(context); // tutup loading
+
+      // 3. Parse response & build SiswaTugas list
+      final siswaTugas = _parsePengumpulanData(detailRes['data'], siswaList, tugasItem.deadline);
+      
+      // 4. Update tugas dengan data siswa terbaru
+      final tugasUpdated = TugasGuru(
+        judul: tugas.judul,
+        deadline: tugas.deadline,
+        siswa: siswaTugas,
+        tugasItem: tugasItem,
+      );
+
+      await _navKePengumpulan(topik, tugasUpdated, tugasItem);
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // tutup loading
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat detail: $e')),
+        );
+      }
+      await _navKePengumpulan(topik, tugas, tugasItem);
+    }
+  }
+
+  Future<void> _navKePengumpulan(TopikTugas topik, TugasGuru tugas, TugasItem? tugasItem) async {
     await Navigator.push<void>(
       context,
       MaterialPageRoute(
@@ -105,12 +157,59 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
           minggu: topik.minggu,
           kelas: topik.kelas,
           tugas: tugas,
+          tugasItem: tugasItem, // kirim juga TugasItem untuk refresh nanti
         ),
       ),
     );
 
-    // Refresh setelah kembali (nilai mungkin berubah).
+    // Refresh setelah kembali (data mungkin berubah).
     if (mounted) setState(() {});
+  }
+
+  /// Parse data pengumpulan dari API + gabungkan dengan daftar siswa kelas
+  List<SiswaTugas> _parsePengumpulanData(
+    dynamic apiData,
+    List<SiswaItem> siswaKelas,
+    String deadlineStr,
+  ) {
+    final _ = DateTime.tryParse(deadlineStr) ?? DateTime.now();
+    final Map<int, DateTime> submitMap = {};
+
+    // Parse submissions dari API response
+    // Expected format: { "submissions": [ { "siswa_id": 1, "submitted_at": "2026-01-15 10:30:00" }, ... ] }
+    // atau: [ { "siswa_id": 1, "submitted_at": "..." }, ... ]
+    if (apiData != null) {
+      List<dynamic> submissions = [];
+      if (apiData is Map && apiData['submissions'] is List) {
+        submissions = apiData['submissions'] as List;
+      } else if (apiData is List) {
+        submissions = apiData;
+      }
+
+      for (final s in submissions) {
+        if (s is Map) {
+          final siswaId = s['siswa_id'] is int
+              ? s['siswa_id'] as int
+              : int.tryParse(s['siswa_id']?.toString() ?? '') ?? 0;
+          final submittedAtStr = s['submitted_at']?.toString() ?? s['created_at']?.toString();
+          if (siswaId > 0 && submittedAtStr != null) {
+            final submittedAt = DateTime.tryParse(submittedAtStr);
+            if (submittedAt != null) {
+              submitMap[siswaId] = submittedAt;
+            }
+          }
+        }
+      }
+    }
+
+    // Gabungkan: setiap siswa di kelas cek apakah ada di submitMap
+    return siswaKelas.map((siswa) {
+      final waktuKumpul = siswa.id != null ? submitMap[siswa.id!] : null;
+      return SiswaTugas(
+        nama: siswa.nama,
+        waktuKumpul: waktuKumpul,
+      );
+    }).toList();
   }
 
   @override
@@ -184,7 +283,7 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 24),
                     itemCount: daftar.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (_, i) => _buildTopik(daftar[i]),
                   ),
           ),

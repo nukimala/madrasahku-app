@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/siswa_model.dart';
+import '../../../models/tugas_model.dart';
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
-
-import '../../../models/tugas_model.dart';
 
 class PengumpulanTugasPage extends StatefulWidget {
   final int minggu;
   final String kelas;
   final TugasGuru tugas;
+  final TugasItem? tugasItem; // Opsional: untuk refresh/manual fetch
 
   const PengumpulanTugasPage({
     super.key,
     required this.minggu,
     required this.kelas,
     required this.tugas,
+    this.tugasItem,
   });
 
   @override
@@ -27,6 +30,10 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
   // null = Semua
   StatusSiswa? _filter;
   String _query = '';
+  bool _loading = false;
+  
+  // Local state untuk list siswa (bisa di-update saat refresh)
+  late List<SiswaTugas> _siswaTugas;
 
   // Daftar filter digeser ke samping.
   static const List<(String, StatusSiswa?)> _opsiFilter = [
@@ -36,14 +43,109 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
     ('Belum Mengumpulkan', StatusSiswa.belum),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _siswaTugas = List.from(widget.tugas.siswa);
+  }
+
+  @override
+  void didUpdateWidget(covariant PengumpulanTugasPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tugas != oldWidget.tugas) {
+      _siswaTugas = List.from(widget.tugas.siswa);
+    }
+  }
+
   List<SiswaTugas> get _hasil {
     final q = _query.toLowerCase();
 
-    return widget.tugas.siswa.where((s) {
+    return _siswaTugas.where((s) {
       final cocokNama = q.isEmpty || s.nama.toLowerCase().contains(q);
       final cocokStatus =
           _filter == null || widget.tugas.statusDari(s) == _filter;
       return cocokNama && cocokStatus;
+    }).toList();
+  }
+
+  /// Refresh data pengumpulan dari server
+  Future<void> _refreshData() async {
+    final tugasItem = widget.tugasItem;
+    if (tugasItem == null) return;
+
+    setState(() => _loading = true);
+    try {
+      final detailRes = await TugasService.instance.ambilDetailPengumpulanTugas(tugasItem.id);
+      final siswaList = tugasItem.classId > 0
+          ? await TugasService.instance.ambilSiswaKelas(tugasItem.classId)
+          : <SiswaItem>[];
+
+      if (!mounted) return;
+
+      final siswaTugas = _parsePengumpulanData(
+        detailRes['data'],
+        siswaList,
+        tugasItem.deadline,
+      );
+
+      setState(() {
+        _siswaTugas = siswaTugas;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data diperbarui')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal refresh: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<SiswaTugas> _parsePengumpulanData(
+    dynamic apiData,
+    List<SiswaItem> siswaKelas,
+    String deadlineStr,
+  ) {
+    final _ = DateTime.tryParse(deadlineStr) ?? DateTime.now();
+    final Map<int, DateTime> submitMap = {};
+
+    if (apiData != null) {
+      List<dynamic> submissions = [];
+      if (apiData is Map && apiData['submissions'] is List) {
+        submissions = apiData['submissions'] as List;
+      } else if (apiData is List) {
+        submissions = apiData;
+      }
+
+      for (final s in submissions) {
+        if (s is Map) {
+          final siswaId = s['siswa_id'] is int
+              ? s['siswa_id'] as int
+              : int.tryParse(s['siswa_id']?.toString() ?? '') ?? 0;
+          final submittedAtStr = s['submitted_at']?.toString() ?? s['created_at']?.toString();
+          if (siswaId > 0 && submittedAtStr != null) {
+            final submittedAt = DateTime.tryParse(submittedAtStr);
+            if (submittedAt != null) {
+              submitMap[siswaId] = submittedAt;
+            }
+          }
+        }
+      }
+    }
+
+    return siswaKelas.map((siswa) {
+      final waktuKumpul = siswa.id != null ? submitMap[siswa.id!] : null;
+      return SiswaTugas(
+        nama: siswa.nama,
+        waktuKumpul: waktuKumpul,
+      );
     }).toList();
   }
 
@@ -60,7 +162,7 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header.
+              // Header dengan tombol refresh.
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -93,6 +195,20 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
                       ],
                     ),
                   ),
+
+                  // Tombol refresh
+                  if (widget.tugasItem != null)
+                    IconButton(
+                      onPressed: _loading ? null : _refreshData,
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 22),
+                      tooltip: 'Refresh data pengumpulan',
+                    ),
                 ],
               ),
 
@@ -128,7 +244,7 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
 
               const SizedBox(height: 14),
 
-              // Daftar siswa.
+              // Daftar siswa dengan pull-to-refresh.
               Expanded(
                 child: daftar.isEmpty
                     ? Center(
@@ -139,11 +255,14 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
                           ),
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        itemCount: daftar.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => _buildSiswa(daftar[i]),
+                    : RefreshIndicator(
+                        onRefresh: _refreshData,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          itemCount: daftar.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          itemBuilder: (_, i) => _buildSiswa(daftar[i]),
+                        ),
                       ),
               ),
             ],

@@ -75,6 +75,7 @@ class TugasItem {
   final String deadline;
   final String subjectName;
   final String className;
+  final int classId; // <-- TAMBAHAN: numeric class ID untuk fetch siswa
   final String teacherName;
   final bool isSubmitted;
   final int? score;
@@ -88,6 +89,7 @@ class TugasItem {
     required this.deadline,
     required this.subjectName,
     required this.className,
+    required this.classId,
     required this.teacherName,
     this.isSubmitted = false,
     this.score,
@@ -104,6 +106,9 @@ class TugasItem {
       deadline: json['deadline'] ?? '',
       subjectName: json['subject_name'] ?? '',
       className: json['class_name'] ?? '',
+      classId: json['class_id'] is int
+          ? json['class_id'] as int
+          : int.tryParse(json['class_id']?.toString() ?? '') ?? 0,
       teacherName: json['teacher_name'] ?? '',
       isSubmitted: sub != null,
       score: sub is Map && sub['score'] != null
