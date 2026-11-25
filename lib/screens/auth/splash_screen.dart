@@ -1,6 +1,10 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
+import '../admin/admin_home_page.dart';
+import '../guru/guru_home_page.dart';
+import '../siswa/siswa_home_page.dart';
 import 'login_page.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,28 +15,33 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Timer? _timer;
-
   @override
   void initState() {
     super.initState();
-
-    _timer = Timer(const Duration(seconds: 2), () {
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const LoginPage(),
-        ),
-      );
-    });
+    _checkSession();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<void> _checkSession() async {
+    final results = await Future.wait<dynamic>([
+      Future<void>.delayed(const Duration(seconds: 2)),
+      AuthService.instance.restoreSession(),
+    ]);
+    if (!mounted) return;
+
+    final role = results[1] as String?;
+    Widget nextPage = const LoginPage();
+    if (role == 'admin' || role == 'operator' || role == 'kepala') {
+      nextPage = const AdminHomePage();
+    } else if (role == 'guru') {
+      nextPage = const GuruHomePage();
+    } else if (role == 'siswa') {
+      nextPage = const SiswaHomePage();
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => nextPage),
+    );
   }
 
   @override

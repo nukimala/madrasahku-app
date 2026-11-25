@@ -22,29 +22,34 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
   AuthService get _authService => AuthService.instance;
 
   // Data profil dari sesi login dan database
-  String _nama = AuthService.instance.currentStudentName ?? 'Siswa Madrasah';
-  final String _nisn = '0125256561';
-  String _email = 'siswa@mts-alhuda.sch.id';
-  final String _kelas = '7';
-  String _alamat = 'Gondang, Nganjuk';
-  final String _waliKelas = 'Wali Kelas';
+  String _nama = 'Siswa Madrasah';
+  String _nisn = '-';
+  String _email = '-';
+  String _kelas = '-';
+  String _alamat = '-';
+  String _waliKelas = '-';
 
   @override
   void initState() {
     super.initState();
-    final sName = _authService.currentStudentName;
-    if (sName != null && sName.isNotEmpty) {
-      _nama = sName;
-    }
+    _syncFromAuth();
     _authService.fetchMe().then((_) {
-      if (mounted) {
-        setState(() {
-          final updatedName = _authService.currentStudentName;
-          if (updatedName != null && updatedName.isNotEmpty) {
-            _nama = updatedName;
-          }
-        });
+      if (mounted) _syncFromAuth();
+    });
+  }
+
+  void _syncFromAuth() {
+    setState(() {
+      final sName = _authService.currentStudentName;
+      if (sName != null && sName.isNotEmpty) _nama = sName;
+      if (_authService.currentNisn.isNotEmpty) _nisn = _authService.currentNisn;
+      if (_authService.currentEmail.isNotEmpty) _email = _authService.currentEmail;
+      if (_authService.currentStudentClassName != null &&
+          _authService.currentStudentClassName!.isNotEmpty) {
+        _kelas = _authService.currentStudentClassName!;
       }
+      if (_authService.currentAddress.isNotEmpty) _alamat = _authService.currentAddress;
+      if (_authService.currentWaliKelas.isNotEmpty) _waliKelas = _authService.currentWaliKelas;
     });
   }
 
@@ -58,10 +63,17 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
     );
 
     if (result != null && mounted) {
+      final newEmail = result['email'] ?? _email;
+      final newAlamat = result['alamat'] ?? _alamat;
+      await _authService.updateProfile(email: newEmail, alamat: newAlamat);
+      if (!mounted) return;
       setState(() {
-        _email = result['email'] ?? _email;
-        _alamat = result['alamat'] ?? _alamat;
+        _email = newEmail;
+        _alamat = newAlamat;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profil berhasil diperbarui')),
+      );
     }
   }
 
@@ -140,9 +152,19 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
               child: const Text('Batal'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
-                // TODO: hubungkan ke API untuk mengubah password siswa.
+                final res = await _authService.changePassword(
+                  currentPassword: currentPasswordController.text,
+                  newPassword: newPasswordController.text,
+                );
+                if (!context.mounted) return;
+                if (res['success'] != true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(res['message'] ?? 'Gagal mengubah password.')),
+                  );
+                  return;
+                }
                 Navigator.pop(dialogContext, true);
               },
               style: ElevatedButton.styleFrom(
@@ -162,7 +184,7 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
 
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password berhasil diubah (dummy).')),
+        const SnackBar(content: Text('Password berhasil diubah.')),
       );
     }
   }

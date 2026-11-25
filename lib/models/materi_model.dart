@@ -7,6 +7,9 @@ class MateriItem {
   final String className;
   final String teacherName;
   final String createdAt;
+  final int? topicId;
+  final int? topicMinggu;
+  final String? topicNama;
 
   const MateriItem({
     required this.id,
@@ -17,18 +20,35 @@ class MateriItem {
     required this.className,
     required this.teacherName,
     required this.createdAt,
+    this.topicId,
+    this.topicMinggu,
+    this.topicNama,
   });
 
   factory MateriItem.fromJson(Map<String, dynamic> json) {
+    final topic = json['topic'];
+    final subj = json['subject'];
+    final cls = json['class'];
     return MateriItem(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
-      title: json['title'] ?? '',
-      description: json['description'],
-      fileUrl: json['file_url'],
-      subjectName: json['subject_name'] ?? '',
-      className: json['class_name'] ?? '',
-      teacherName: json['teacher_name'] ?? '',
-      createdAt: json['created_at'] ?? '',
+      title: (json['title'] ?? '').toString(),
+      description: json['description']?.toString(),
+      fileUrl: (json['file_url'] ?? json['external_url'])?.toString(),
+      subjectName: subj is Map
+          ? (subj['name'] ?? '').toString()
+          : (json['subject_name'] ?? '').toString(),
+      className: cls is Map
+          ? (cls['name'] ?? '').toString()
+          : (json['class_name'] ?? '').toString(),
+      teacherName: (json['author_name'] ?? json['teacher_name'] ?? '').toString(),
+      createdAt: (json['published_at'] ?? json['created_at'] ?? '').toString(),
+      topicId: topic is Map
+          ? (topic['id'] is int ? topic['id'] as int : int.tryParse(topic['id']?.toString() ?? ''))
+          : null,
+      topicMinggu: topic is Map
+          ? (topic['minggu'] is int ? topic['minggu'] as int : int.tryParse(topic['minggu']?.toString() ?? ''))
+          : null,
+      topicNama: topic is Map ? topic['nama']?.toString() : null,
     );
   }
 }

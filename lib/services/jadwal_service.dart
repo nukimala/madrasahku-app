@@ -77,9 +77,11 @@ class JadwalService {
     ...tahunAjaranTersedia,
     ..._tahunAjaranTambahan,
     ..._jadwal.map((item) => item.tahunAjaran),
+    ..._jadwalApi.map((item) => item.tahunAjaran),
   }.toList()..sort(_compareSchoolYear);
 
-  int get jumlahJadwalTersimpan => _jadwal.length;
+  int get jumlahJadwalTersimpan =>
+      _jadwalApi.isNotEmpty ? _jadwalApi.length : _jadwal.length;
 
   Future<void> load() async {
     if (_loaded) return;
@@ -226,14 +228,16 @@ class JadwalService {
   List<JadwalPelajaran> semuaJadwal({
     required String tahunAjaran,
     required Semester semester,
-  }) =>
-      _jadwal
-          .where(
-            (item) =>
-                item.tahunAjaran == tahunAjaran && item.semester == semester,
-          )
-          .toList()
-        ..sort(_compareTime);
+  }) {
+    final source = _jadwalApi.isNotEmpty ? _jadwalApi : _jadwal;
+    return source
+        .where(
+          (item) =>
+              item.tahunAjaran == tahunAjaran && item.semester == semester,
+        )
+        .toList()
+      ..sort(_compareTime);
+  }
 
   List<JadwalPelajaran> jadwalKelas({
     required String tahunAjaran,
@@ -277,8 +281,51 @@ class JadwalService {
       ..sort(_compareTime);
   }
 
+  String _formatJam(int menit) {
+    final h = (menit ~/ 60).toString().padLeft(2, '0');
+    final m = (menit % 60).toString().padLeft(2, '0');
+    return '$h:$m:00';
+  }
+
+  int _hariToInt(HariSekolah h) => switch (h) {
+        HariSekolah.senin => 1,
+        HariSekolah.selasa => 2,
+        HariSekolah.rabu => 3,
+        HariSekolah.kamis => 4,
+        HariSekolah.jumat => 5,
+        HariSekolah.sabtu => 6,
+      };
+
   Future<String?> simpan(JadwalPelajaran jadwal, {int? kecualiId}) async {
     _ensureLoaded();
+    final body = {
+      'kelas': jadwal.kelas ?? '',
+      'mapel': jadwal.mataPelajaran,
+      'guru': jadwal.guru,
+      'day_of_week': _hariToInt(jadwal.hari),
+      'start_time': _formatJam(jadwal.mulaiMenit ?? 420),
+      'end_time': _formatJam(jadwal.selesaiMenit ?? 480),
+      if (jadwal.ruang != null && jadwal.ruang!.isNotEmpty) 'ruang': jadwal.ruang,
+    };
+
+    if (kecualiId != null && _jadwalApi.any((j) => j.id == kecualiId)) {
+      final res = await ApiClient.instance.put('/schedules/$kecualiId', body: body);
+      if (!res.success) {
+        return res.errorMessage ?? 'Gagal memperbarui jadwal di server.';
+      }
+      await ambilJadwalApi();
+      return null;
+    }
+
+    if (ApiClient.instance.accessToken != null && ApiClient.instance.accessToken!.isNotEmpty) {
+      final res = await ApiClient.instance.post('/schedules', body: body);
+      if (!res.success) {
+        return res.errorMessage ?? 'Gagal menyimpan jadwal ke server.';
+      }
+      await ambilJadwalApi();
+      return null;
+    }
+
     final saved = jadwal.copyWith(id: kecualiId ?? _nextId);
     final error = _cekBentrok(saved, kecualiId: kecualiId);
     if (error != null) return error;
@@ -297,6 +344,11 @@ class JadwalService {
 
   Future<void> hapus(int id) async {
     _ensureLoaded();
+    if (_jadwalApi.any((j) => j.id == id)) {
+      await ApiClient.instance.delete('/schedules/$id');
+      await ambilJadwalApi();
+      return;
+    }
     final schedules = _jadwal.where((item) => item.id != id).toList();
     if (schedules.length == _jadwal.length) return;
     await _save(schedules);

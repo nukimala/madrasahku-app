@@ -28,6 +28,27 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
   bool _isDeletingAll = false;
 
   @override
+  void initState() {
+    super.initState();
+    _muatJadwalApi();
+  }
+
+  Future<void> _muatJadwalApi() async {
+    try {
+      final list = await JadwalService.instance.ambilJadwalApi();
+      if (!mounted) return;
+      if (list.isNotEmpty) {
+        final years = list.map((e) => e.tahunAjaran).toSet();
+        setState(() {
+          if (!years.contains(_tahunAjaran)) {
+            _tahunAjaran = years.first;
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

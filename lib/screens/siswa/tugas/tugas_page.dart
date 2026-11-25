@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../services/auth_service.dart';
 import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -42,8 +43,9 @@ class _TugasItem {
 
 class TugasPage extends StatefulWidget {
   final VoidCallback? onBack;
+  final int refreshTick;
 
-  const TugasPage({super.key, this.onBack});
+  const TugasPage({super.key, this.onBack, this.refreshTick = 0});
 
   @override
   State<TugasPage> createState() => _TugasPageState();
@@ -59,25 +61,57 @@ class _TugasPageState extends State<TugasPage> {
     _muatTugas();
   }
 
+  @override
+  void didUpdateWidget(covariant TugasPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshTick != widget.refreshTick && !_loading) {
+      _muatTugas();
+    }
+  }
+
   Future<void> _muatTugas() async {
     setState(() => _loading = true);
     try {
-      final items = await TugasService.instance.ambilDaftarTugas();
+      final auth = AuthService.instance;
+      final classId = auth.currentStudentClassId;
+      final items = await TugasService.instance.ambilDaftarTugas(classId: classId);
       if (items.isNotEmpty) {
+        const bulanNama = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        ];
+        final now = DateTime.now();
         final mapped = items.map((t) {
+          final parsedDl = DateTime.tryParse(t.deadline);
           final isDone = t.isSubmitted;
-          final status = isDone ? TugasStatus.selesai : TugasStatus.aktif;
-          final dl = t.deadline;
-          final isUrgent = dl.toLowerCase().contains('hari ini') || dl.toLowerCase().contains('besok');
+          final isLate = !isDone && parsedDl != null && parsedDl.isBefore(now);
+          final status = isDone
+              ? TugasStatus.selesai
+              : (isLate ? TugasStatus.terlambat : TugasStatus.aktif);
+          final isUrgent = !isDone &&
+              !isLate &&
+              parsedDl != null &&
+              parsedDl.difference(now).inHours <= 24;
+
+          final endDateStr = parsedDl != null
+              ? '${parsedDl.day} ${bulanNama[parsedDl.month - 1]} ${parsedDl.year}'
+              : t.deadline;
+          final endTimeStr = parsedDl != null
+              ? '${parsedDl.hour.toString().padLeft(2, '0')}.${parsedDl.minute.toString().padLeft(2, '0')}'
+              : '';
+          final monthStr = parsedDl != null
+              ? '${bulanNama[parsedDl.month - 1]} ${parsedDl.year}'
+              : 'Semester Berjalan';
+
           return _TugasItem(
             title: t.title,
             subject: t.subjectName,
             startTime: '',
             startDate: '',
-            endTime: '',
-            endDate: t.deadline,
+            endTime: endTimeStr,
+            endDate: endDateStr,
             status: status,
-            month: 'Semester Berjalan',
+            month: monthStr,
             isUrgent: isUrgent,
             publicId: t.publicId,
           );

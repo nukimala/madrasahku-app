@@ -33,11 +33,13 @@ class TugasGuru {
   final String judul;
   final DateTime deadline;
   final List<SiswaTugas> siswa;
+  final TugasItem? tugasItem;
 
   TugasGuru({
     required this.judul,
     required this.deadline,
     List<SiswaTugas>? siswa,
+    this.tugasItem,
   }) : siswa = siswa ?? [];
 
   StatusSiswa statusDari(SiswaTugas s) {
@@ -80,6 +82,9 @@ class TugasItem {
   final bool isSubmitted;
   final int? score;
   final String? teacherFeedback;
+  final int? topicId;
+  final int? topicMinggu;
+  final String? topicNama;
 
   const TugasItem({
     required this.id,
@@ -94,27 +99,48 @@ class TugasItem {
     this.isSubmitted = false,
     this.score,
     this.teacherFeedback,
+    this.topicId,
+    this.topicMinggu,
+    this.topicNama,
   });
 
   factory TugasItem.fromJson(Map<String, dynamic> json) {
     final sub = json['my_submission'];
+    final cls = json['class'];
+    final subj = json['subject'];
+    final topic = json['topic'];
     return TugasItem(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
-      publicId: json['public_id'] ?? json['id']?.toString() ?? '',
-      title: json['title'] ?? '',
-      instructions: json['instructions'],
-      deadline: json['deadline'] ?? '',
-      subjectName: json['subject_name'] ?? '',
-      className: json['class_name'] ?? '',
-      classId: json['class_id'] is int
-          ? json['class_id'] as int
-          : int.tryParse(json['class_id']?.toString() ?? '') ?? 0,
-      teacherName: json['teacher_name'] ?? '',
+      publicId: (json['public_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      instructions: (json['description'] ?? json['instructions'])?.toString(),
+      deadline: (json['due_at'] ?? json['deadline'] ?? '').toString(),
+      subjectName: subj is Map
+          ? (subj['name'] ?? '').toString()
+          : (json['subject_name'] ?? '').toString(),
+      className: cls is Map
+          ? (cls['name'] ?? '').toString()
+          : (json['class_name'] ?? '').toString(),
+      classId: cls is Map
+          ? (cls['id'] is int ? cls['id'] as int : int.tryParse(cls['id']?.toString() ?? '') ?? 0)
+          : (json['class_id'] is int
+              ? json['class_id'] as int
+              : int.tryParse(json['class_id']?.toString() ?? '') ?? 0),
+      teacherName: (json['teacher_name'] ?? json['author_name'] ?? '').toString(),
       isSubmitted: sub != null,
       score: sub is Map && sub['score'] != null
-          ? int.tryParse(sub['score'].toString())
+          ? (double.tryParse(sub['score'].toString())?.round())
           : null,
-      teacherFeedback: sub is Map ? sub['teacher_feedback']?.toString() : null,
+      teacherFeedback: sub is Map
+          ? (sub['feedback'] ?? sub['teacher_feedback'])?.toString()
+          : null,
+      topicId: topic is Map
+          ? (topic['id'] is int ? topic['id'] as int : int.tryParse(topic['id']?.toString() ?? ''))
+          : null,
+      topicMinggu: topic is Map
+          ? (topic['minggu'] is int ? topic['minggu'] as int : int.tryParse(topic['minggu']?.toString() ?? ''))
+          : null,
+      topicNama: topic is Map ? topic['nama']?.toString() : null,
     );
   }
 }

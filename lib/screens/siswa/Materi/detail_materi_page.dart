@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -8,15 +9,19 @@ class DetailMateriPage extends StatefulWidget {
   final String judul;
   final String mapel;
   final String kelas;
+  final String? deskripsi;
+  final String? fileUrl;
   final int totalHalaman;
   final int halamanAwal;
 
   const DetailMateriPage({
     super.key,
-    this.judul = 'Minggu 1 - Persamaan Linear',
-    this.mapel = 'Matematika',
-    this.kelas = 'Kelas VIII A',
-    this.totalHalaman = 12,
+    this.judul = 'Materi Pembelajaran',
+    this.mapel = '',
+    this.kelas = '',
+    this.deskripsi,
+    this.fileUrl,
+    this.totalHalaman = 1,
     this.halamanAwal = 1,
   });
 
@@ -47,12 +52,18 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
     Navigator.pop(context, true); // beri tahu halaman daftar bahwa materi selesai
   }
 
-  void _showComingSoon(String menu) {
+  Future<void> _salinLinkFile() async {
+    final url = widget.fileUrl?.trim() ?? '';
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Materi ini tidak memiliki lampiran file.')),
+      );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text('Tautan lampiran disalin: $url')),
     );
   }
 
@@ -109,14 +120,55 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                     ),
                   ],
                 ),
-                alignment: Alignment.center,
-                // TODO: ganti dengan PDF viewer (mis. pdfx / syncfusion_flutter_pdfviewer)
-                child: Text(
-                  '${widget.mapel}\nHalaman $_halaman',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyle.bodySmall.copyWith(
-                    fontSize: 12,
-                    color: const Color(0xFF9CA3AF),
+                alignment: Alignment.topLeft,
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.judul,
+                        style: AppTextStyle.headingSmall.copyWith(fontSize: 15),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${widget.mapel} • ${widget.kelas}',
+                        style: AppTextStyle.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const Divider(height: 24),
+                      Text(
+                        (widget.deskripsi != null && widget.deskripsi!.trim().isNotEmpty)
+                            ? widget.deskripsi!
+                            : 'Silakan pelajari materi dan lampiran yang disediakan oleh guru.',
+                        style: AppTextStyle.bodyMedium.copyWith(height: 1.5),
+                      ),
+                      if (widget.fileUrl != null && widget.fileUrl!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.attach_file, size: 18, color: _green),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.fileUrl!,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -154,7 +206,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                   width: double.infinity,
                   height: 36,
                   child: OutlinedButton(
-                    onPressed: () => _showComingSoon('Unduh file'),
+                    onPressed: _salinLinkFile,
                     style: OutlinedButton.styleFrom(
                       backgroundColor: AppColors.white,
                       foregroundColor: _green,
@@ -164,7 +216,7 @@ class _DetailMateriPageState extends State<DetailMateriPage> {
                       ),
                     ),
                     child: const Text(
-                      'Download File',
+                      'Salin Tautan File',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/mapel_model.dart';
+import '../../../services/master_data_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_mapel_page.dart';
@@ -13,100 +14,44 @@ class DataMapelPage extends StatefulWidget {
 }
 
 class _DataMapelPageState extends State<DataMapelPage> {
-  static final List<MapelItem> _mapelList = [
-    const MapelItem(
-      nama: 'Al-Qur’an Hadis',
-      kode: 'QH',
-      deskripsi: '',
-      kelompok: kelompokPai,
-    ),
-    const MapelItem(
-      nama: 'Akidah Akhlak',
-      kode: 'AA',
-      deskripsi: '',
-      kelompok: kelompokPai,
-    ),
-    const MapelItem(
-      nama: 'Fikih',
-      kode: 'FIK',
-      deskripsi: '',
-      kelompok: kelompokPai,
-    ),
-    const MapelItem(
-      nama: 'Sejarah Kebudayaan Islam (SKI)',
-      kode: 'SKI',
-      deskripsi: '',
-      kelompok: kelompokPai,
-    ),
-    const MapelItem(
-      nama: 'Bahasa Arab',
-      kode: 'ARB',
-      deskripsi: '',
-      kelompok: kelompokPai,
-    ),
-    const MapelItem(
-      nama: 'Pendidikan Pancasila',
-      kode: 'PP',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Bahasa Indonesia',
-      kode: 'BIN',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Matematika',
-      kode: 'MTK',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Ilmu Pengetahuan Alam (IPA)',
-      kode: 'IPA',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Ilmu Pengetahuan Sosial (IPS)',
-      kode: 'IPS',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Bahasa Inggris',
-      kode: 'BIG',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Seni Budaya',
-      kode: 'SB',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)',
-      kode: 'PJOK',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-    const MapelItem(
-      nama: 'Informatika/Keterampilan',
-      kode: 'INF',
-      deskripsi: '',
-      kelompok: kelompokUmum,
-    ),
-  ];
+  List<MapelItem> _mapelList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   final TextEditingController _searchController = TextEditingController();
   String _keyword = '';
 
   @override
+  void initState() {
+    super.initState();
+    _fetchMapel();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchMapel() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final items = await MasterDataService.instance.fetchMapel();
+      if (!mounted) return;
+      setState(() {
+        _mapelList = items;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
   }
 
   List<MapelItem> get _filtered => _mapelList.where((mapel) {
@@ -123,14 +68,30 @@ class _DataMapelPageState extends State<DataMapelPage> {
     );
     if (!mounted || result == null) return;
 
-    setState(() {
+    try {
       if (mapel == null) {
-        _mapelList.add(result);
-      } else {
-        final index = _mapelList.indexOf(mapel);
-        if (index != -1) _mapelList[index] = result;
+        await MasterDataService.instance.createMapel(result);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mata pelajaran berhasil ditambahkan')),
+        );
+      } else if (mapel.id != null) {
+        await MasterDataService.instance.updateMapel(mapel.id!, result);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mata pelajaran berhasil diperbarui')),
+        );
       }
-    });
+      _fetchMapel();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDelete(MapelItem mapel) async {
@@ -157,7 +118,24 @@ class _DataMapelPageState extends State<DataMapelPage> {
         ],
       ),
     );
-    if (hapus == true && mounted) setState(() => _mapelList.remove(mapel));
+    if (hapus == true && mounted && mapel.id != null) {
+      try {
+        await MasterDataService.instance.deleteMapel(mapel.id!);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mata pelajaran berhasil dihapus')),
+        );
+        _fetchMapel();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _handleAction(MapelItem mapel, String action) {
@@ -254,7 +232,29 @@ class _DataMapelPageState extends State<DataMapelPage> {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: data.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyle.bodyMedium.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _fetchMapel,
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : data.isEmpty
                   ? Center(
                       child: Text(
                         'Mata pelajaran tidak ditemukan',
@@ -264,17 +264,20 @@ class _DataMapelPageState extends State<DataMapelPage> {
                         ),
                       ),
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: data.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final mapel = data[index];
-                        return _MapelCard(
-                          mapel: mapel,
-                          onAction: (action) => _handleAction(mapel, action),
-                        );
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _fetchMapel,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: data.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final mapel = data[index];
+                          return _MapelCard(
+                            mapel: mapel,
+                            onAction: (action) => _handleAction(mapel, action),
+                          );
+                        },
+                      ),
                     ),
             ),
           ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../models/materi_model.dart';
 import '../../../services/materi_service.dart';
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -15,6 +17,7 @@ import 'edit_tugas_page.dart';
 // MODEL SEMENTARA
 // =====================================================================
 class _Item {
+  final int? id;
   final String judul;
   final String sub;
   final bool isTugas;
@@ -27,6 +30,7 @@ class _Item {
   final String? jenis;      // hanya tugas
 
   _Item({
+    this.id,
     required this.judul,
     this.sub = '',
     this.isTugas = false,
@@ -38,6 +42,7 @@ class _Item {
   });
 
   _Item copyWith({
+    int? id,
     String? judul,
     String? sub,
     bool? isTugas,
@@ -49,6 +54,7 @@ class _Item {
     bool hapusFile = false,
   }) {
     return _Item(
+      id: id ?? this.id,
       judul: judul ?? this.judul,
       sub: sub ?? this.sub,
       isTugas: isTugas ?? this.isTugas,
@@ -62,6 +68,7 @@ class _Item {
 }
 
 class _Topik {
+  final int? id;
   final int minggu;
   final String nama;
   final DateTime waktu;
@@ -72,6 +79,7 @@ class _Topik {
   String mapel;
 
   _Topik({
+    this.id,
     required this.minggu,
     required this.nama,
     required this.waktu,
@@ -87,7 +95,8 @@ class _Topik {
 // HALAMAN MATERI GURU
 // =====================================================================
 class MateriGuruPage extends StatefulWidget {
-  const MateriGuruPage({super.key});
+  final int refreshTick;
+  const MateriGuruPage({super.key, this.refreshTick = 0});
 
   @override
   State<MateriGuruPage> createState() => _MateriGuruPageState();
@@ -126,6 +135,14 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     _muatAwal();
   }
 
+  @override
+  void didUpdateWidget(covariant MateriGuruPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshTick != widget.refreshTick && !_memuat) {
+      _muatMateriApi();
+    }
+  }
+
   Future<void> _muatAwal() async {
     setState(() {
       _memuat = true;
@@ -162,37 +179,156 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
         _mapel = daftar.isNotEmpty ? daftar.first : null;
       }
     });
+    _muatMateriApi();
+  }
+
+  void _gantiMapel(String v) {
+    setState(() {
+      _mapel = v;
+    });
+    _muatMateriApi();
   }
 
   Future<void> _muatMateriApi() async {
+    if (_kelas == null || _mapel == null) return;
+    
+    // Debug: log all penugasan
+    debugPrint('MateriGuruPage: _penugasan = ${_penugasan.map((p) => '${p.className}|${p.subjectName}|csid=${p.classSubjectId}').toList()}');
+    debugPrint('MateriGuruPage: Looking for kelas="$_kelas", mapel="$_mapel"');
+    
+    // Cari classSubjectId dari penugasan guru (case-insensitive, trim)
+    final kelasTrim = _kelas!.trim().toLowerCase();
+    final mapelTrim = _mapel!.trim().toLowerCase();
+    final penugasan = _penugasan.firstWhere(
+      (p) => p.className.trim().toLowerCase() == kelasTrim && p.subjectName.trim().toLowerCase() == mapelTrim,
+      orElse: () => GuruKelasMapel(classSubjectId: 0, classId: 0, className: '', subjectId: 0, subjectName: ''),
+    );
+    
+    debugPrint('MateriGuruPage: Found penugasan -> classSubjectId=${penugasan.classSubjectId}, classId=${penugasan.classId}');
+    
+    if (penugasan.classSubjectId == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kelas/Mapel tidak ditemukan di penugasan (classSubjectId=0): $_kelas / $_mapel. Periksa log untuk detail.')),
+        );
+      }
+      return;
+    }
+    
     try {
-      final items = await MateriService.instance.ambilDaftarMateri();
+      final topicsData = await MateriService.instance.ambilTopikGuru(penugasan.classSubjectId);
+      final items = await MateriService.instance.ambilDaftarMateri(classSubjectId: penugasan.classSubjectId);
+      final tugasItems = await TugasService.instance.ambilDaftarTugas(classSubjectId: penugasan.classSubjectId);
+      debugPrint('MateriGuruPage: Loaded ${topicsData.length} topics, ${items.length} materi, ${tugasItems.length} tugas');
       if (mounted) {
         setState(() {
           _topik.clear();
-          for (var i = 0; i < items.length; i++) {
-            final m = items[i];
+          final Map<int, _Topik> byTopicId = {};
+
+          for (final td in topicsData) {
+            final tId = td['id'] is int ? td['id'] as int : int.tryParse(td['id']?.toString() ?? '');
+            final minggu = td['minggu'] is int ? td['minggu'] as int : int.tryParse(td['minggu']?.toString() ?? '') ?? 1;
             final t = _Topik(
-              minggu: i + 1,
-              nama: m.title,
-              kelas: m.className,
-              mapel: m.subjectName,
-              waktu: DateTime.tryParse(m.createdAt) ?? DateTime.now(),
-              items: [
-                _Item(
-                  judul: m.title,
-                  sub: m.description ?? 'Materi ${m.subjectName}',
-                  deskripsi: m.description ?? '',
-                  namaFile: m.fileUrl,
-                ),
-              ],
+              id: tId,
+              minggu: minggu,
+              nama: (td['nama'] ?? 'Topik').toString(),
+              kelas: penugasan.className,
+              mapel: penugasan.subjectName,
+              waktu: DateTime.tryParse(td['created_at']?.toString() ?? '') ?? DateTime.now(),
+              items: [],
             );
             _topik.add(t);
             _terbuka.add(t);
+            if (tId != null) byTopicId[tId] = t;
+          }
+
+          _Topik? fallbackTopik;
+          _Topik getFallback(String clsName, String subjName) {
+            if (fallbackTopik != null) return fallbackTopik!;
+            final t = _Topik(
+              id: null,
+              minggu: 1,
+              nama: 'Umum',
+              kelas: clsName,
+              mapel: subjName,
+              waktu: DateTime.now(),
+              items: [],
+            );
+            _topik.add(t);
+            _terbuka.add(t);
+            fallbackTopik = t;
+            return t;
+          }
+
+          for (var i = 0; i < items.length; i++) {
+            final m = items[i];
+            final mItem = _Item(
+              id: m.id,
+              judul: m.title,
+              sub: m.description ?? 'Materi ${m.subjectName}',
+              deskripsi: m.description ?? '',
+              namaFile: m.fileUrl,
+            );
+            if (m.topicId != null && byTopicId.containsKey(m.topicId)) {
+              byTopicId[m.topicId]!.items.add(mItem);
+            } else if (m.topicId != null) {
+              final t = _Topik(
+                id: m.topicId,
+                minggu: m.topicMinggu ?? 1,
+                nama: m.topicNama ?? 'Topik',
+                kelas: m.className,
+                mapel: m.subjectName,
+                waktu: DateTime.tryParse(m.createdAt) ?? DateTime.now(),
+                items: [mItem],
+              );
+              _topik.add(t);
+              _terbuka.add(t);
+              byTopicId[m.topicId!] = t;
+            } else {
+              getFallback(m.className, m.subjectName).items.add(mItem);
+            }
+          }
+
+          for (var i = 0; i < tugasItems.length; i++) {
+            final tg = tugasItems[i];
+            final dl = DateTime.tryParse(tg.deadline);
+            final tgItem = _Item(
+              id: tg.id,
+              judul: tg.title,
+              sub: dl != null ? 'Deadline: ${dl.day}/${dl.month}/${dl.year}' : (tg.instructions ?? 'Tugas ${tg.subjectName}'),
+              isTugas: true,
+              deskripsi: tg.instructions ?? '',
+              deadline: dl,
+            );
+            if (tg.topicId != null && byTopicId.containsKey(tg.topicId)) {
+              byTopicId[tg.topicId]!.items.add(tgItem);
+            } else if (tg.topicId != null) {
+              final t = _Topik(
+                id: tg.topicId,
+                minggu: tg.topicMinggu ?? 1,
+                nama: tg.topicNama ?? 'Topik',
+                kelas: tg.className,
+                mapel: tg.subjectName,
+                waktu: DateTime.now(),
+                items: [tgItem],
+              );
+              _topik.add(t);
+              _terbuka.add(t);
+              byTopicId[tg.topicId!] = t;
+            } else {
+              getFallback(tg.className, tg.subjectName).items.add(tgItem);
+            }
           }
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('MateriGuruPage: Error loading materi: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat materi: $e')),
+        );
+      }
+    }
   }
 
   // Filter kelas + mapel terpilih, pencarian.
@@ -225,6 +361,49 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
 
     if (hasil == null || !mounted) return;
+
+    final kelasTrim = _kelas?.trim().toLowerCase() ?? '';
+    final mapelTrim = _mapel?.trim().toLowerCase() ?? '';
+    final penugasan = _penugasan.firstWhere(
+      (p) => p.className.trim().toLowerCase() == kelasTrim && p.subjectName.trim().toLowerCase() == mapelTrim,
+      orElse: () => GuruKelasMapel(classSubjectId: 0, classId: 0, className: '', subjectId: 0, subjectName: ''),
+    );
+
+    if (penugasan.classSubjectId > 0) {
+      final res = await MateriService.instance.buatTopik(
+        classSubjectId: penugasan.classSubjectId,
+        minggu: hasil.minggu,
+        nama: hasil.nama,
+      );
+      if (!mounted) return;
+      if (res['success'] == true) {
+        final data = res['data'];
+        final serverId = data is Map && data['id'] != null
+            ? (data['id'] is int ? data['id'] as int : int.tryParse(data['id'].toString()))
+            : null;
+        final savedTopik = _Topik(
+          id: serverId,
+          minggu: hasil.minggu,
+          nama: hasil.nama,
+          waktu: hasil.waktu,
+          kelas: _kelas!,
+          mapel: _mapel!,
+          items: hasil.items,
+        );
+        setState(() {
+          _topik.add(savedTopik);
+          _terbuka.add(savedTopik);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Topik berhasil disimpan ke server')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal menyimpan topik ke server')),
+        );
+      }
+      return;
+    }
 
     hasil.kelas = _kelas!;
     hasil.mapel = _mapel!;
@@ -298,6 +477,22 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   // BUKA HALAMAN TAMBAH MATERI
   // -------------------------------------------------------------------
   Future<void> _bukaTambahMateri(_Topik topik) async {
+    final kelasTrim = _kelas?.trim().toLowerCase() ?? '';
+    final mapelTrim = _mapel?.trim().toLowerCase() ?? '';
+    final penugasan = _penugasan.firstWhere(
+      (p) => p.className.trim().toLowerCase() == kelasTrim && p.subjectName.trim().toLowerCase() == mapelTrim,
+      orElse: () => GuruKelasMapel(classSubjectId: 0, classId: 0, className: '', subjectId: 0, subjectName: ''),
+    );
+
+    debugPrint('MateriGuruPage: _bukaTambahMateri -> kelas="$_kelas", mapel="$_mapel", classSubjectId=${penugasan.classSubjectId}');
+
+    if (penugasan.classSubjectId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kelas/Mapel tidak ditemukan di penugasan (classSubjectId=0): $_kelas / $_mapel')),
+      );
+      return;
+    }
+
     final hasil = await Navigator.push<MateriBaru>(
       context,
       MaterialPageRoute(
@@ -311,25 +506,88 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
     if (hasil == null || !mounted) return;
 
-    setState(() {
-      topik.items.add(
-        _Item(
-          judul: hasil.judul,
-          sub: hasil.deskripsi.isNotEmpty
-              ? hasil.deskripsi
-              : (hasil.namaFile ?? ''),
-          deskripsi: hasil.deskripsi,
-          namaFile: hasil.namaFile,
-        ),
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      debugPrint('MateriGuruPage: Calling buatMateri with classSubjectId=${penugasan.classSubjectId}, title=${hasil.judul}');
+      final res = await MateriService.instance.buatMateri(
+        classSubjectId: penugasan.classSubjectId,
+        topikId: topik.id,
+        title: hasil.judul,
+        description: hasil.deskripsi,
+        fileUrl: hasil.namaFile,
+        filePath: hasil.filePath,
       );
-      _terbuka.add(topik);
-    });
+
+      debugPrint('MateriGuruPage: buatMateri response: success=${res['success']}, message=${res['message']}, data=${res['data']}');
+
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+
+      if (res['success']) {
+        final data = res['data'];
+        final newId = data is Map && data['id'] != null
+            ? (data['id'] is int ? data['id'] as int : int.tryParse(data['id'].toString()))
+            : null;
+        
+        setState(() {
+          topik.items.add(
+            _Item(
+              id: newId,
+              judul: hasil.judul,
+              sub: hasil.deskripsi.isNotEmpty
+                  ? hasil.deskripsi
+                  : (hasil.namaFile ?? ''),
+              deskripsi: hasil.deskripsi,
+              namaFile: hasil.namaFile,
+            ),
+          );
+          _terbuka.add(topik);
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Materi berhasil dibuat')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal membuat materi: ${res['errorCode'] ?? ''}')),
+        );
+      }
+    } catch (e) {
+      debugPrint('MateriGuruPage: Exception in buatMateri: $e');
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   // -------------------------------------------------------------------
   // BUKA HALAMAN TAMBAH TUGAS
   // -------------------------------------------------------------------
   Future<void> _bukaTambahTugas(_Topik topik) async {
+    final kelasTrim = _kelas?.trim().toLowerCase() ?? '';
+    final mapelTrim = _mapel?.trim().toLowerCase() ?? '';
+    final penugasan = _penugasan.firstWhere(
+      (p) => p.className.trim().toLowerCase() == kelasTrim && p.subjectName.trim().toLowerCase() == mapelTrim,
+      orElse: () => GuruKelasMapel(classSubjectId: 0, classId: 0, className: '', subjectId: 0, subjectName: ''),
+    );
+
+    debugPrint('MateriGuruPage: _bukaTambahTugas -> kelas="$_kelas", mapel="$_mapel", classSubjectId=${penugasan.classSubjectId}');
+
+    if (penugasan.classSubjectId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Kelas/Mapel tidak ditemukan di penugasan (classSubjectId=0): $_kelas / $_mapel')),
+      );
+      return;
+    }
+
     final hasil = await Navigator.push<TugasBaru>(
       context,
       MaterialPageRoute(
@@ -345,23 +603,69 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
     final d = hasil.deadline;
 
-    setState(() {
-      topik.items.add(
-        _Item(
-          judul: hasil.judul,
-          sub: 'Deadline: ${d.day}/${d.month}/${d.year}, '
-              '${d.hour.toString().padLeft(2, '0')}.'
-              '${d.minute.toString().padLeft(2, '0')}',
-          isTugas: true,
-          deskripsi: hasil.deskripsi,
-          namaFile: hasil.namaFile,
-          mulai: hasil.mulai,
-          deadline: hasil.deadline,
-          jenis: hasil.jenis,
-        ),
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      debugPrint('MateriGuruPage: Calling buatTugas with classSubjectId=${penugasan.classSubjectId}, title=${hasil.judul}');
+      final res = await TugasService.instance.buatTugas(
+        classSubjectId: penugasan.classSubjectId,
+        topikId: topik.id,
+        title: hasil.judul,
+        description: hasil.deskripsi,
+        deadline: hasil.deadline,
+        fileUrl: hasil.namaFile,
+        filePath: hasil.filePath,
       );
-      _terbuka.add(topik);
-    });
+
+      debugPrint('MateriGuruPage: buatTugas response: success=${res['success']}, message=${res['message']}, data=${res['data']}');
+
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+
+      if (res['success']) {
+        final data = res['data'];
+        final newId = data is Map && data['id'] != null
+            ? (data['id'] is int ? data['id'] as int : int.tryParse(data['id'].toString()))
+            : null;
+        setState(() {
+          topik.items.add(
+            _Item(
+              id: newId,
+              judul: hasil.judul,
+              sub: 'Deadline: ${d.day}/${d.month}/${d.year}, '
+                  '${d.hour.toString().padLeft(2, '0')}.'
+                  '${d.minute.toString().padLeft(2, '0')}',
+              isTugas: true,
+              deskripsi: hasil.deskripsi,
+              namaFile: hasil.namaFile,
+              mulai: hasil.mulai,
+              deadline: hasil.deadline,
+              jenis: hasil.jenis,
+            ),
+          );
+          _terbuka.add(topik);
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Tugas berhasil dibuat')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal membuat tugas: ${res['errorCode'] ?? ''}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   // -------------------------------------------------------------------
@@ -383,6 +687,22 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
     );
 
     if (hasil == null || !mounted) return;
+
+    if (item.id != null && item.id! > 0) {
+      final res = await MateriService.instance.updateMateri(
+        materialId: item.id!,
+        title: hasil.judul,
+        description: hasil.deskripsi,
+        fileUrl: hasil.namaFile,
+      );
+      if (!mounted) return;
+      if (res['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal memperbarui materi')),
+        );
+        return;
+      }
+    }
 
     setState(() {
       final i = topik.items.indexOf(item);
@@ -432,6 +752,22 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
 
     if (hasil == null || !mounted) return;
 
+    if (item.id != null && item.id! > 0) {
+      final res = await TugasService.instance.updateTugas(
+        assignmentId: item.id!,
+        title: hasil.judul,
+        description: hasil.deskripsi,
+        deadline: hasil.deadline,
+      );
+      if (!mounted) return;
+      if (res['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal memperbarui tugas')),
+        );
+        return;
+      }
+    }
+
     final d = hasil.deadline;
 
     setState(() {
@@ -459,6 +795,50 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
   // -------------------------------------------------------------------
   // HAPUS ITEM
   // -------------------------------------------------------------------
+  Future<void> _hapusTopik(_Topik topik) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Topik?', style: TextStyle(fontSize: 16)),
+        content: Text(
+          '"${topik.judul}" akan dihapus dari daftar.',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+
+    if (topik.id != null && topik.id! > 0) {
+      final res = await MateriService.instance.hapusTopik(topik.id!);
+      if (!mounted) return;
+      if (res['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal menghapus topik')),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      _topik.remove(topik);
+      _terbuka.remove(topik);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Topik berhasil dihapus')),
+    );
+  }
+
   Future<void> _hapusItem(_Topik topik, _Item item) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -481,9 +861,25 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
       ),
     );
 
-    if (ok == true) {
-      setState(() => topik.items.remove(item));
+    if (ok != true || !mounted) return;
+
+    if (item.id != null && item.id! > 0) {
+      final res = item.isTugas
+          ? await TugasService.instance.hapusTugas(item.id!)
+          : await MateriService.instance.hapusMateri(item.id!);
+      if (!mounted) return;
+      if (res['success'] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Gagal menghapus item')),
+        );
+        return;
+      }
     }
+
+    setState(() => topik.items.remove(item));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Berhasil dihapus')),
+    );
   }
 
   // -------------------------------------------------------------------
@@ -590,7 +986,7 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                       value: _mapel,
                       items: _mapelList,
                       hint: 'Pilih mapel',
-                      onChanged: (v) => setState(() => _mapel = v),
+                      onChanged: _gantiMapel,
                     ),
                   ),
                 ],
@@ -682,12 +1078,20 @@ class _MateriGuruPageState extends State<MateriGuruPage> {
                     ],
                   ),
                 ),
-                if (terbuka)
+                if (terbuka) ...[
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
+                    tooltip: 'Hapus Topik',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => _hapusTopik(t),
+                  ),
+                  const SizedBox(width: 10),
                   GestureDetector(
                     onTap: () => _pilihJenisUpload(t),
                     child: const Icon(Icons.add, size: 30),
-                  )
-                else
+                  ),
+                ] else
                   const Icon(Icons.keyboard_arrow_down),
               ],
             ),

@@ -23,6 +23,7 @@ class SiswaHomePage extends StatefulWidget {
 
 class _SiswaHomePageState extends State<SiswaHomePage> {
   int _currentIndex = 0;
+  int _tabTick = 0;
   int _jumlahMateri = 0;
   int _jumlahTugas = 0;
   List<TugasItem> _tugasTerbaru = [];
@@ -57,15 +58,19 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
   void _changePage(int index) {
     setState(() {
       _currentIndex = index;
+      _tabTick++;
     });
+    if (index == 0) {
+      _muatDataSiswa();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       _buildHomeContent(),
-      const MateriPage(),
-      const TugasPage(),
+      MateriPage(refreshTick: _tabTick),
+      TugasPage(refreshTick: _tabTick),
       const ProfilSiswaPage(),
     ];
 

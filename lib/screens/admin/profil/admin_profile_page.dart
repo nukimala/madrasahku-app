@@ -93,16 +93,17 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
               child: const Text('Batal'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
-                final changed = _authService.changeAdminPassword(
+                final res = await _authService.changePassword(
                   currentPassword: currentPasswordController.text,
                   newPassword: newPasswordController.text,
                 );
-                if (!changed) {
+                if (!context.mounted) return;
+                if (res['success'] != true) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Password saat ini tidak sesuai.'),
+                    SnackBar(
+                      content: Text(res['message'] ?? 'Password saat ini tidak sesuai.'),
                     ),
                   );
                   return;

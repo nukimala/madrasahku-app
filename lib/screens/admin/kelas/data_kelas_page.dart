@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/kelas_model.dart';
+import '../../../services/master_data_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'tambah_kelas_page.dart';
@@ -13,59 +14,45 @@ class DataKelasPage extends StatefulWidget {
 }
 
 class _DataKelasPageState extends State<DataKelasPage> {
-  static final List<KelasItem> _kelasList = [
-    const KelasItem(
-      nama: '7',
-      tingkat: '7',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '8A',
-      tingkat: '8',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '8B',
-      tingkat: '8',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '8C',
-      tingkat: '8',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '9A',
-      tingkat: '9',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '9B',
-      tingkat: '9',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-    const KelasItem(
-      nama: '9C',
-      tingkat: '9',
-      waliKelas: null,
-      tahunAjaran: '2026/2027',
-    ),
-  ];
+  List<KelasItem> _kelasList = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   final TextEditingController _searchController = TextEditingController();
   String _keyword = '';
   String _selectedTingkat = 'Semua';
 
   @override
+  void initState() {
+    super.initState();
+    _fetchKelas();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchKelas() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final items = await MasterDataService.instance.fetchKelas();
+      if (!mounted) return;
+      setState(() {
+        _kelasList = items;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
   }
 
   List<KelasItem> get _filtered => _kelasList
@@ -84,14 +71,30 @@ class _DataKelasPageState extends State<DataKelasPage> {
     );
     if (!mounted || result == null) return;
 
-    setState(() {
+    try {
       if (kelas == null) {
-        _kelasList.add(result);
-      } else {
-        final index = _kelasList.indexOf(kelas);
-        if (index != -1) _kelasList[index] = result;
+        await MasterDataService.instance.createKelas(result);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kelas berhasil ditambahkan')),
+        );
+      } else if (kelas.id != null) {
+        await MasterDataService.instance.updateKelas(kelas.id!, result);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kelas berhasil diperbarui')),
+        );
       }
-    });
+      _fetchKelas();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDelete(KelasItem kelas) async {
@@ -118,7 +121,24 @@ class _DataKelasPageState extends State<DataKelasPage> {
         ],
       ),
     );
-    if (hapus == true && mounted) setState(() => _kelasList.remove(kelas));
+    if (hapus == true && mounted && kelas.id != null) {
+      try {
+        await MasterDataService.instance.deleteKelas(kelas.id!);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kelas berhasil dihapus')),
+        );
+        _fetchKelas();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   void _handleAction(KelasItem kelas, String action) {
@@ -205,7 +225,29 @@ class _DataKelasPageState extends State<DataKelasPage> {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: data.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: AppTextStyle.bodyMedium.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _fetchKelas,
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : data.isEmpty
                   ? Center(
                       child: Text(
                         'Data kelas tidak ditemukan',
@@ -215,17 +257,20 @@ class _DataKelasPageState extends State<DataKelasPage> {
                         ),
                       ),
                     )
-                  : ListView.separated(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: data.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final kelas = data[index];
-                        return _KelasCard(
-                          kelas: kelas,
-                          onAction: (action) => _handleAction(kelas, action),
-                        );
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _fetchKelas,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: data.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final kelas = data[index];
+                          return _KelasCard(
+                            kelas: kelas,
+                            onAction: (action) => _handleAction(kelas, action),
+                          );
+                        },
+                      ),
                     ),
             ),
           ],
