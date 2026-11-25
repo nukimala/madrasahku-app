@@ -1,4 +1,4 @@
--- ============================================================================
+     NB-- ============================================================================
 -- DATABASE MASTER DUMP: MTs Al-Huda Gondang
 -- Standar Penamaan: Semi-Bahasa Indonesia (Tunggal)
 -- Terintegrasi: Web Portal Madrasah & Mobile App (Madrasahku)

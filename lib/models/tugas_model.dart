@@ -33,11 +33,13 @@ class TugasGuru {
   final String judul;
   final DateTime deadline;
   final List<SiswaTugas> siswa;
+  final TugasItem? tugasItem;
 
   TugasGuru({
     required this.judul,
     required this.deadline,
     List<SiswaTugas>? siswa,
+    this.tugasItem,
   }) : siswa = siswa ?? [];
 
   StatusSiswa statusDari(SiswaTugas s) {
