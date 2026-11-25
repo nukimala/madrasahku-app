@@ -113,8 +113,8 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
     List<SiswaItem> siswaKelas,
     String deadlineStr,
   ) {
-    final _ = DateTime.tryParse(deadlineStr) ?? DateTime.now();
-    final Map<int, DateTime> submitMap = {};
+    final Map<int, DateTime?> submitMap = {};
+    final List<SiswaTugas> dariApi = [];
 
     if (apiData != null) {
       List<dynamic> submissions = [];
@@ -126,18 +126,28 @@ class _PengumpulanTugasPageState extends State<PengumpulanTugasPage> {
 
       for (final s in submissions) {
         if (s is Map) {
-          final siswaId = s['siswa_id'] is int
-              ? s['siswa_id'] as int
-              : int.tryParse(s['siswa_id']?.toString() ?? '') ?? 0;
-          final submittedAtStr = s['submitted_at']?.toString() ?? s['created_at']?.toString();
-          if (siswaId > 0 && submittedAtStr != null) {
-            final submittedAt = DateTime.tryParse(submittedAtStr);
-            if (submittedAt != null) {
-              submitMap[siswaId] = submittedAt;
-            }
+          final rawId = s['student_id'] ?? s['siswa_id'];
+          final siswaId = rawId is int
+              ? rawId
+              : int.tryParse(rawId?.toString() ?? '') ?? 0;
+          final nama = (s['student_name'] ?? s['nama'] ?? '').toString();
+          final submittedAtStr =
+              s['submitted_at']?.toString() ?? s['created_at']?.toString();
+          final submittedAt =
+              submittedAtStr != null ? DateTime.tryParse(submittedAtStr) : null;
+
+          if (nama.isNotEmpty) {
+            dariApi.add(SiswaTugas(nama: nama, waktuKumpul: submittedAt));
+          }
+          if (siswaId > 0) {
+            submitMap[siswaId] = submittedAt;
           }
         }
       }
+    }
+
+    if (dariApi.isNotEmpty) {
+      return dariApi;
     }
 
     return siswaKelas.map((siswa) {

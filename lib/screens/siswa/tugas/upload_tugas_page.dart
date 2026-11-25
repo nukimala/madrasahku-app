@@ -32,6 +32,7 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
   // File terpilih (sementara berupa data dummy)
   String? _fileName;
   String? _fileInfo;
+  String? _filePath;
 
   bool _isSubmitting = false;
 
@@ -56,6 +57,7 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
             : '$sizeKb KB';
         setState(() {
           _fileName = f.name;
+          _filePath = f.path;
           _fileInfo = '${f.extension?.toUpperCase() ?? "BERKAS"} $sizeStr';
         });
       }
@@ -68,6 +70,7 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
     setState(() {
       _fileName = null;
       _fileInfo = null;
+      _filePath = null;
     });
   }
 
@@ -83,6 +86,7 @@ class _UploadTugasPageState extends State<UploadTugasPage> {
       final res = await TugasService.instance.kumpulkanTugas(
         publicId: widget.publicId!,
         fileUrl: _fileName!,
+        filePath: _filePath,
         note: _noteController.text.trim(),
       );
       if (!mounted) return;

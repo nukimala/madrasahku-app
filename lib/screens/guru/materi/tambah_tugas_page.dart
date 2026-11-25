@@ -12,6 +12,7 @@ class TugasBaru {
   final DateTime deadline;
   final String jenis;
   final String? namaFile;
+  final String? filePath;
 
   const TugasBaru({
     required this.judul,
@@ -20,6 +21,7 @@ class TugasBaru {
     required this.deadline,
     required this.jenis,
     this.namaFile,
+    this.filePath,
   });
 }
 
@@ -58,6 +60,7 @@ class _TambahTugasPageState extends State<TambahTugasPage> {
   DateTime _deadline = DateTime.now().add(const Duration(days: 1));
   String _jenis = 'Individu';
   String? _namaFile;
+  String? _filePath;
 
   @override
   void dispose() {
@@ -111,7 +114,10 @@ class _TambahTugasPageState extends State<TambahTugasPage> {
         allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'png'],
       );
       if (res.isNotEmpty) {
-        setState(() => _namaFile = res.first.name);
+        setState(() {
+          _namaFile = res.first.name;
+          _filePath = res.first.path;
+        });
       }
     } catch (_) {}
   }
@@ -142,6 +148,7 @@ class _TambahTugasPageState extends State<TambahTugasPage> {
         deadline: _deadline,
         jenis: _jenis,
         namaFile: _namaFile,
+        filePath: _filePath,
       ),
     );
   }

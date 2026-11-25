@@ -38,16 +38,21 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
   @override
   void initState() {
     super.initState();
+    _syncFromAuth();
+    AuthService.instance.fetchMe().then((_) {
+      if (mounted) _syncFromAuth();
+    });
+  }
+
+  void _syncFromAuth() {
     final auth = AuthService.instance;
-    _nama = auth.currentTeacherName ?? 'Guru';
-    _email = auth.adminProfile.email;
-    auth.fetchMe().then((_) {
-      if (mounted) {
-        setState(() {
-          _nama = auth.currentTeacherName ?? 'Guru';
-          _email = auth.adminProfile.email;
-        });
-      }
+    setState(() {
+      _nama = auth.currentTeacherName ?? 'Guru';
+      _email = auth.currentEmail;
+      _nip = auth.currentNip;
+      _mataPelajaran = auth.currentSubjectSpecialty;
+      _alamat = auth.currentAddress;
+      _waliKelas = auth.currentHomeroomClass;
     });
   }
 
@@ -93,6 +98,12 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
     );
 
     if (!mounted || hasil == null) return;
+
+    await AuthService.instance.updateProfile(
+      email: hasil.email,
+      alamat: hasil.alamat,
+    );
+    if (!mounted) return;
 
     setState(() {
       _nama = hasil.nama;
@@ -181,7 +192,7 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (passwordLama.text.isEmpty ||
                         passwordBaru.text.isEmpty ||
                         konfirmasi.text.isEmpty) {
@@ -189,9 +200,9 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
                       return;
                     }
 
-                    if (passwordBaru.text.length < 8) {
+                    if (passwordBaru.text.length < 6) {
                       _snack(
-                        'Password baru minimal 8 karakter.',
+                        'Password baru minimal 6 karakter.',
                         target: dialogContext,
                       );
                       return;
@@ -200,6 +211,19 @@ class _ProfilGuruPageState extends State<ProfilGuruPage> {
                     if (passwordBaru.text != konfirmasi.text) {
                       _snack(
                         'Konfirmasi password tidak sama.',
+                        target: dialogContext,
+                      );
+                      return;
+                    }
+
+                    final res = await AuthService.instance.changePassword(
+                      currentPassword: passwordLama.text,
+                      newPassword: passwordBaru.text,
+                    );
+                    if (!dialogContext.mounted) return;
+                    if (res['success'] != true) {
+                      _snack(
+                        res['message'] ?? 'Gagal mengubah password.',
                         target: dialogContext,
                       );
                       return;

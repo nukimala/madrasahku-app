@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../../models/materi_model.dart';
 import '../../../models/siswa_model.dart';
 import '../../../models/tugas_model.dart';
+import '../../../services/materi_service.dart';
 import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -9,7 +12,8 @@ import '../../../utilis/app_text_style.dart';
 import 'pengumpulan_tugas.dart';
 
 class TugasGuruPage extends StatefulWidget {
-  const TugasGuruPage({super.key});
+  final int refreshTick;
+  const TugasGuruPage({super.key, this.refreshTick = 0});
 
   @override
   State<TugasGuruPage> createState() => _TugasGuruPageState();
@@ -18,77 +22,205 @@ class TugasGuruPage extends StatefulWidget {
 class _TugasGuruPageState extends State<TugasGuruPage> {
   static const Color _topikBg = Color(0xFFF1EDEC);
 
-  static const _kelasList = [
-    'Kelas VII A',
-    'Kelas VII B',
-    'Kelas VIII A',
-    'Kelas VIII B',
-    'Kelas IX A',
-  ];
+  // Kelas & mapel yang diampu guru login (dari API).
+  List<GuruKelasMapel> _penugasan = [];
+  bool _memuat = true;
 
-  static const _mapelList = [
-    'Matematika',
-    'Bahasa Indonesia',
-    'IPA',
-    'IPS',
-    'Bahasa Inggris',
-  ];
-
-  String _kelas = 'Kelas VIII A';
-  String _mapel = 'Matematika';
+  String? _kelas;
+  String? _mapel;
   String _query = '';
 
   final List<TopikTugas> _topik = [];
   final Set<TopikTugas> _terbuka = {};
 
+  // Kelas unik yang diajar guru ini.
+  List<String> get _kelasList =>
+      _penugasan.map((e) => e.className).toSet().toList();
+
+  // Mapel yang diajar guru ini di kelas terpilih.
+  List<String> get _mapelList => _penugasan
+      .where((e) => e.className == _kelas)
+      .map((e) => e.subjectName)
+      .toSet()
+      .toList();
+
   @override
   void initState() {
     super.initState();
+    _muatAwal();
+  }
+
+  @override
+  void didUpdateWidget(covariant TugasGuruPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshTick != widget.refreshTick && !_memuat) {
+      _muatTugasApi();
+    }
+  }
+
+  Future<void> _muatAwal() async {
+    setState(() {
+      _memuat = true;
+    });
+
+    try {
+      final p = await MateriService.instance.ambilKelasMapelGuru();
+      if (!mounted) return;
+      setState(() {
+        _penugasan = p;
+        _kelas = _kelasList.isNotEmpty ? _kelasList.first : null;
+        _mapel = _mapelList.isNotEmpty ? _mapelList.first : null;
+        _memuat = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _memuat = false;
+      });
+      return;
+    }
+
+    await _muatTugasApi();
+  }
+
+  void _gantiKelas(String v) {
+    setState(() {
+      _kelas = v;
+      // Mapel harus ikut kelas baru.
+      final daftar = _mapelList;
+      if (!daftar.contains(_mapel)) {
+        _mapel = daftar.isNotEmpty ? daftar.first : null;
+      }
+    });
+    _muatTugasApi();
+  }
+
+  void _gantiMapel(String v) {
+    setState(() {
+      _mapel = v;
+    });
     _muatTugasApi();
   }
 
   Future<void> _muatTugasApi() async {
+    if (_kelas == null || _mapel == null) return;
+    
+    // Debug: log all penugasan
+    debugPrint('TugasGuruPage: _penugasan = ${_penugasan.map((p) => '${p.className}|${p.subjectName}|csid=${p.classSubjectId}').toList()}');
+    debugPrint('TugasGuruPage: Looking for kelas="$_kelas", mapel="$_mapel"');
+    
+    // Cari classSubjectId dari penugasan guru (case-insensitive, trim)
+    final kelasTrim = _kelas!.trim().toLowerCase();
+    final mapelTrim = _mapel!.trim().toLowerCase();
+    final penugasan = _penugasan.firstWhere(
+      (p) => p.className.trim().toLowerCase() == kelasTrim && p.subjectName.trim().toLowerCase() == mapelTrim,
+      orElse: () => GuruKelasMapel(classSubjectId: 0, classId: 0, className: '', subjectId: 0, subjectName: ''),
+    );
+    
+    debugPrint('TugasGuruPage: Found penugasan -> classSubjectId=${penugasan.classSubjectId}, classId=${penugasan.classId}');
+    
+    if (penugasan.classSubjectId == 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kelas/Mapel tidak ditemukan di penugasan (classSubjectId=0): $_kelas / $_mapel. Periksa log untuk detail.')),
+        );
+      }
+      return;
+    }
+    
     try {
-      final items = await TugasService.instance.ambilDaftarTugas();
+      final topicsData = await MateriService.instance.ambilTopikGuru(penugasan.classSubjectId);
+      final items = await TugasService.instance.ambilDaftarTugas(classSubjectId: penugasan.classSubjectId);
+      debugPrint('TugasGuruPage: Loaded ${topicsData.length} topics & ${items.length} tugas items from API');
       if (mounted) {
         setState(() {
           _topik.clear();
+          final Map<int, TopikTugas> byTopicId = {};
+
+          for (final td in topicsData) {
+            final tId = td['id'] is int ? td['id'] as int : int.tryParse(td['id']?.toString() ?? '');
+            final minggu = td['minggu'] is int ? td['minggu'] as int : int.tryParse(td['minggu']?.toString() ?? '') ?? 1;
+            final topik = TopikTugas(
+              minggu: minggu,
+              nama: (td['nama'] ?? 'Topik').toString(),
+              kelas: penugasan.className,
+              mapel: penugasan.subjectName,
+              tugas: [],
+            );
+            _topik.add(topik);
+            _terbuka.add(topik);
+            if (tId != null) byTopicId[tId] = topik;
+          }
+
+          TopikTugas? fallbackTopik;
           for (var i = 0; i < items.length; i++) {
             final t = items[i];
             final deadline = DateTime.tryParse(t.deadline) ??
                 DateTime.now().add(const Duration(days: 7));
-            final topik = TopikTugas(
-              minggu: i + 1,
-              nama: t.title,
-              kelas: t.className,
-              mapel: t.subjectName,
-              tugas: [
-                TugasGuru(
-                  judul: t.title,
-                  deadline: deadline,
-                  siswa: [],
-                  tugasItem: t, // SIMPAN referensi TugasItem asli
-                ),
-              ],
+            final tg = TugasGuru(
+              judul: t.title,
+              deadline: deadline,
+              siswa: [],
+              tugasItem: t,
             );
-            _topik.add(topik);
-            _terbuka.add(topik);
+
+            if (t.topicId != null && byTopicId.containsKey(t.topicId)) {
+              byTopicId[t.topicId]!.tugas.add(tg);
+            } else if (t.topicId != null) {
+              final topik = TopikTugas(
+                minggu: t.topicMinggu ?? 1,
+                nama: t.topicNama ?? 'Topik',
+                kelas: t.className,
+                mapel: t.subjectName,
+                tugas: [tg],
+              );
+              _topik.add(topik);
+              _terbuka.add(topik);
+              byTopicId[t.topicId!] = topik;
+            } else {
+              if (fallbackTopik == null) {
+                fallbackTopik = TopikTugas(
+                  minggu: 1,
+                  nama: 'Umum',
+                  kelas: t.className,
+                  mapel: t.subjectName,
+                  tugas: [tg],
+                );
+                _topik.add(fallbackTopik);
+                _terbuka.add(fallbackTopik);
+              } else {
+                fallbackTopik.tugas.add(tg);
+              }
+            }
           }
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('TugasGuruPage: Error loading tugas: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat tugas: $e')),
+        );
+      }
+    }
   }
 
   List<TopikTugas> get _hasil {
     final q = _query.toLowerCase();
+    final kelasLower = _kelas?.toLowerCase() ?? '';
+    final mapelLower = _mapel?.toLowerCase() ?? '';
 
     return _topik.where((t) {
       final matchesKelas = t.kelas.isEmpty ||
-          t.kelas.toLowerCase().contains(_kelas.replaceAll('Kelas ', '').trim().toLowerCase()) ||
-          _kelas.toLowerCase().contains(t.kelas.toLowerCase());
+          (kelasLower.isNotEmpty && (
+            t.kelas.toLowerCase().contains(kelasLower.replaceAll('kelas ', '').trim()) ||
+            kelasLower.contains(t.kelas.toLowerCase())
+          ));
       final matchesMapel = t.mapel.isEmpty ||
-          t.mapel.toLowerCase().contains(_mapel.toLowerCase()) ||
-          _mapel.toLowerCase().contains(t.mapel.toLowerCase());
+          (mapelLower.isNotEmpty && (
+            t.mapel.toLowerCase().contains(mapelLower) ||
+            mapelLower.contains(t.mapel.toLowerCase())
+          ));
 
       if (!matchesKelas || !matchesMapel) return false;
       if (q.isEmpty) return true;
@@ -172,12 +304,9 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
     List<SiswaItem> siswaKelas,
     String deadlineStr,
   ) {
-    final _ = DateTime.tryParse(deadlineStr) ?? DateTime.now();
-    final Map<int, DateTime> submitMap = {};
+    final Map<int, DateTime?> submitMap = {};
+    final List<SiswaTugas> dariApi = [];
 
-    // Parse submissions dari API response
-    // Expected format: { "submissions": [ { "siswa_id": 1, "submitted_at": "2026-01-15 10:30:00" }, ... ] }
-    // atau: [ { "siswa_id": 1, "submitted_at": "..." }, ... ]
     if (apiData != null) {
       List<dynamic> submissions = [];
       if (apiData is Map && apiData['submissions'] is List) {
@@ -188,23 +317,33 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
 
       for (final s in submissions) {
         if (s is Map) {
-          final siswaId = s['siswa_id'] is int
-              ? s['siswa_id'] as int
-              : int.tryParse(s['siswa_id']?.toString() ?? '') ?? 0;
-          final submittedAtStr = s['submitted_at']?.toString() ?? s['created_at']?.toString();
-          if (siswaId > 0 && submittedAtStr != null) {
-            final submittedAt = DateTime.tryParse(submittedAtStr);
-            if (submittedAt != null) {
-              submitMap[siswaId] = submittedAt;
-            }
+          final rawId = s['student_id'] ?? s['siswa_id'];
+          final siswaId = rawId is int
+              ? rawId
+              : int.tryParse(rawId?.toString() ?? '') ?? 0;
+          final nama = (s['student_name'] ?? s['nama'] ?? '').toString();
+          final submittedAtStr =
+              s['submitted_at']?.toString() ?? s['created_at']?.toString();
+          final submittedAt =
+              submittedAtStr != null ? DateTime.tryParse(submittedAtStr) : null;
+
+          if (nama.isNotEmpty) {
+            dariApi.add(SiswaTugas(nama: nama, waktuKumpul: submittedAt));
+          }
+          if (siswaId > 0) {
+            submitMap[siswaId] = submittedAt;
           }
         }
       }
     }
 
-    // Gabungkan: setiap siswa di kelas cek apakah ada di submitMap
+    if (dariApi.isNotEmpty) {
+      return dariApi;
+    }
+
+    // Fallback jika API hanya mengembalikan daftar yang sudah mengumpulkan
     return siswaKelas.map((siswa) {
-      final waktuKumpul = siswa.id != null ? submitMap[siswa.id!] : null;
+      final waktuKumpul = submitMap[siswa.id];
       return SiswaTugas(
         nama: siswa.nama,
         waktuKumpul: waktuKumpul,
@@ -235,7 +374,9 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
                 child: _Dropdown(
                   value: _kelas,
                   items: _kelasList,
-                  onChanged: (v) => setState(() => _kelas = v),
+                  onChanged: _memuat ? null : (v) {
+                    if (v != null) _gantiKelas(v);
+                  },
                 ),
               ),
 
@@ -245,7 +386,7 @@ class _TugasGuruPageState extends State<TugasGuruPage> {
                 child: _Dropdown(
                   value: _mapel,
                   items: _mapelList,
-                  onChanged: (v) => setState(() => _mapel = v),
+                  onChanged: _memuat ? null : _gantiMapel,
                 ),
               ),
             ],
@@ -425,9 +566,9 @@ class _Kotak extends StatelessWidget {
 }
 
 class _Dropdown extends StatelessWidget {
-  final String value;
+  final String? value;
   final List<String> items;
-  final ValueChanged<String> onChanged;
+  final ValueChanged<String>? onChanged;
 
   const _Dropdown({
     required this.value,
@@ -447,9 +588,11 @@ class _Dropdown extends StatelessWidget {
           items: items
               .map((e) => DropdownMenuItem(value: e, child: Text(e)))
               .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
+          onChanged: onChanged != null
+              ? (v) {
+                  if (v != null) onChanged!(v);
+                }
+              : null,
         ),
       ),
     );

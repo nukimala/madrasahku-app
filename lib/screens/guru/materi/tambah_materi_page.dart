@@ -9,11 +9,13 @@ class MateriBaru {
   final String judul;
   final String deskripsi;
   final String? namaFile;
+  final String? filePath;
 
   const MateriBaru({
     required this.judul,
     required this.deskripsi,
     this.namaFile,
+    this.filePath,
   });
 }
 
@@ -40,6 +42,7 @@ class _TambahMateriPageState extends State<TambahMateriPage> {
   final _deskripsi = TextEditingController();
 
   String? _namaFile;
+  String? _filePath;
 
   @override
   void dispose() {
@@ -56,7 +59,10 @@ class _TambahMateriPageState extends State<TambahMateriPage> {
         allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'png'],
       );
       if (res.isNotEmpty) {
-        setState(() => _namaFile = res.first.name);
+        setState(() {
+          _namaFile = res.first.name;
+          _filePath = res.first.path;
+        });
       }
     } catch (_) {}
   }
@@ -77,6 +83,7 @@ class _TambahMateriPageState extends State<TambahMateriPage> {
         judul: _judul.text.trim(),
         deskripsi: _deskripsi.text.trim(),
         namaFile: _namaFile,
+        filePath: _filePath,
       ),
     );
   }

@@ -26,6 +26,7 @@ class GuruHomePage extends StatefulWidget {
 
 class _GuruHomePageState extends State<GuruHomePage> {
   int _currentIndex = 0;
+  int _tabTick = 0;
 
   static const Color _green = Color(0xFF219653);
 
@@ -59,7 +60,11 @@ class _GuruHomePageState extends State<GuruHomePage> {
   void _changePage(int index) {
     setState(() {
       _currentIndex = index;
+      _tabTick++;
     });
+    if (index == 0) {
+      _muatData();
+    }
   }
 
   // Membuka halaman jadwal lengkap.
@@ -128,8 +133,8 @@ class _GuruHomePageState extends State<GuruHomePage> {
     // Semua halaman navbar berada dalam satu IndexedStack.
     final pages = [
       _buildHomeContent(todaySchedules),
-      const MateriGuruPage(),
-      const TugasGuruPage(),
+      MateriGuruPage(refreshTick: _tabTick),
+      TugasGuruPage(refreshTick: _tabTick),
       const ProfilGuruPage(),
     ];
 

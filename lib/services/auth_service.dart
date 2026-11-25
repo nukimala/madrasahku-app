@@ -1,5 +1,6 @@
 import '../models/admin_profile_model.dart';
 import 'api_client.dart';
+import 'token_store.dart';
 
 class AuthService {
   AuthService._();
@@ -43,11 +44,27 @@ class AuthService {
   String? _currentUsername;
   String? _currentUserPhone;
 
+  // Student class info (dari /me endpoint)
+  int? _currentStudentClassId;
+  String? _currentStudentClassName;
+  Map<String, dynamic> _currentProfile = {};
+
   String? get currentRole => _currentUserRole ?? _currentAccount?.role;
   String? get currentTeacherName =>
       currentRole == 'guru' ? (_currentUserName ?? 'Guru Madrasah') : null;
   String? get currentStudentName =>
       currentRole == 'siswa' ? (_currentUserName ?? 'Siswa Madrasah') : null;
+  String get currentEmail => _currentUserEmail ?? '';
+  String get currentNip => (_currentProfile['nip'] ?? _currentProfile['nuptk'] ?? '').toString();
+  String get currentSubjectSpecialty => (_currentProfile['bidang_studi'] ?? '').toString();
+  String get currentAddress => (_currentProfile['alamat'] ?? '').toString();
+  String get currentHomeroomClass => (_currentProfile['wali_kelas'] ?? '').toString();
+  String get currentNisn => (_currentProfile['nisn'] ?? _currentProfile['nis'] ?? '').toString();
+  String get currentWaliKelas => (_currentProfile['wali_kelas'] ?? '').toString();
+
+  // Getters untuk kelas siswa
+  int? get currentStudentClassId => _currentStudentClassId;
+  String? get currentStudentClassName => _currentStudentClassName;
 
   AdminProfile get adminProfile => AdminProfile(
     namaLengkap: _currentUserName ?? _adminAccount.namaLengkap,
@@ -77,10 +94,15 @@ class AuthService {
         final userData = res.data['user'];
 
         if (tokens != null) {
+          final acc = (tokens['access_token'] ?? '').toString();
+          final ref = (tokens['refresh_token'] ?? '').toString();
           ApiClient.instance.setTokens(
-            accessToken: tokens['access_token'] ?? '',
-            refreshToken: tokens['refresh_token'] ?? '',
+            accessToken: acc,
+            refreshToken: ref,
           );
+          try {
+            await TokenStore.save(acc, ref);
+          } catch (_) {}
         }
 
         if (userData != null) {
@@ -131,7 +153,41 @@ class AuthService {
         _currentUserEmail = u['email'] ?? _currentUserEmail;
         _currentUsername = u['username'] ?? _currentUsername;
         if (u['profile'] is Map) {
-          _currentUserPhone = u['profile']['phone'] ?? u['profile']['no_hp'];
+          _currentProfile = Map<String, dynamic>.from(u['profile'] as Map);
+          _currentUserPhone = _currentProfile['phone']?.toString() ?? _currentProfile['no_hp']?.toString();
+        } else {
+          _currentProfile = {};
+        }
+
+        // Extract student class info if role is siswa
+        if (_currentUserRole == 'siswa' && _currentProfile.isNotEmpty) {
+          final rawClassId = _currentProfile['kelas_id'] ?? _currentProfile['class_id'];
+          _currentStudentClassId = rawClassId is int
+              ? rawClassId
+              : int.tryParse(rawClassId?.toString() ?? '');
+          _currentStudentClassName = (_currentProfile['kelas'] ?? _currentProfile['class_name'] ?? _currentProfile['nama_kelas'] ?? '').toString();
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<bool> updateProfile({String? email, String? alamat, String? noHp}) async {
+    try {
+      final res = await ApiClient.instance.put(
+        '/me',
+        body: {
+          if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+          if (alamat != null && alamat.trim().isNotEmpty) 'alamat': alamat.trim(),
+          if (noHp != null && noHp.trim().isNotEmpty) 'no_hp': noHp.trim(),
+        },
+      );
+      if (res.success && res.data != null && res.data['user'] != null) {
+        final u = res.data['user'];
+        _currentUserEmail = u['email'] ?? _currentUserEmail;
+        if (u['profile'] is Map) {
+          _currentProfile = Map<String, dynamic>.from(u['profile'] as Map);
         }
         return true;
       }
@@ -197,11 +253,52 @@ class AuthService {
     return true;
   }
 
+  /// Pulihkan sesi login tersimpan saat aplikasi dibuka (auto-login)
+  Future<String?> restoreSession() async {
+    try {
+      await TokenStore.load();
+      final acc = TokenStore.access;
+      final ref = TokenStore.refresh;
+      if (acc == null || acc.isEmpty) return null;
+      ApiClient.instance.setTokens(accessToken: acc, refreshToken: ref);
+      final ok = await fetchMe();
+      if (ok && _currentUserRole != null && _currentUserRole!.isNotEmpty) {
+        return _currentUserRole;
+      }
+      await TokenStore.clear();
+      ApiClient.instance.clearTokens();
+    } catch (_) {}
+    return null;
+  }
+
+  /// Ubah password akun yang sedang login ke database server
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final res = await ApiClient.instance.post(
+      '/auth/change-password',
+      body: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+    );
+    return {
+      'success': res.success,
+      'message': res.success
+          ? 'Password berhasil diubah.'
+          : (res.errorMessage ?? 'Gagal mengubah password.'),
+    };
+  }
+
   Future<void> logout() async {
     try {
       if (ApiClient.instance.accessToken != null) {
         await ApiClient.instance.post('/auth/logout');
       }
+    } catch (_) {}
+    try {
+      await TokenStore.clear();
     } catch (_) {}
     _currentAccount = null;
     _currentUserRole = null;

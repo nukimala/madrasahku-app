@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'api_client.dart';
 import '../models/materi_model.dart';
 
@@ -5,10 +6,13 @@ class MateriService {
   MateriService._();
   static final MateriService instance = MateriService._();
 
-  Future<List<MateriItem>> ambilDaftarMateri({int? classId}) async {
+  Future<List<MateriItem>> ambilDaftarMateri({int? classId, int? classSubjectId}) async {
     final params = <String, String>{};
     if (classId != null && classId > 0) {
       params['class_id'] = classId.toString();
+    }
+    if (classSubjectId != null && classSubjectId > 0) {
+      params['class_subject_id'] = classSubjectId.toString();
     }
 
     final res = await ApiClient.instance.get(
@@ -25,6 +29,142 @@ class MateriService {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> ambilTopikGuru(int classSubjectId) async {
+    final res = await ApiClient.instance.get(
+      '/teacher/topics',
+      queryParams: {'class_subject_id': classSubjectId.toString()},
+    );
+    if (res.success && res.data is Map && res.data['topics'] is List) {
+      return (res.data['topics'] as List)
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> buatTopik({
+    required int classSubjectId,
+    required int minggu,
+    required String nama,
+    String? deskripsi,
+  }) async {
+    final res = await ApiClient.instance.post(
+      '/teacher/topics',
+      body: {
+        'class_subject_id': classSubjectId,
+        'minggu': minggu,
+        'nama': nama,
+        if (deskripsi != null && deskripsi.isNotEmpty) 'deskripsi': deskripsi,
+      },
+    );
+    return {
+      'success': res.success,
+      'data': res.success ? res.data : null,
+      'message': res.success
+          ? 'Topik berhasil disimpan'
+          : (res.errorMessage ?? 'Gagal menyimpan topik'),
+    };
+  }
+
+  /// Buat materi baru (guru) - POST /teacher/materials atau /materials
+  Future<Map<String, dynamic>> buatMateri({
+    required int classSubjectId,
+    required String title,
+    required String description,
+    int? topikId,
+    String? fileUrl,
+    String? filePath,
+  }) async {
+    final res = (filePath != null && filePath.isNotEmpty)
+        ? await ApiClient.instance.postMultipart(
+            '/teacher/materials',
+            fields: {
+              'class_subject_id': classSubjectId.toString(),
+              if (topikId != null && topikId > 0) 'topik_id': topikId.toString(),
+              'title': title,
+              'description': description,
+            },
+            fileField: 'file',
+            filePath: filePath,
+          )
+        : await ApiClient.instance.post(
+            '/teacher/materials',
+            body: {
+              'class_subject_id': classSubjectId,
+              if (topikId != null && topikId > 0) 'topik_id': topikId,
+              'title': title,
+              'description': description,
+              if (fileUrl != null && fileUrl.isNotEmpty) 'file_url': fileUrl,
+            },
+          );
+    return {
+      'success': res.success,
+      'data': res.success ? res.data : null,
+      'message': res.success
+          ? 'Materi berhasil dibuat'
+          : (res.errorMessage ?? 'Gagal membuat materi'),
+    };
+  }
+
+  /// Update materi (guru) - PUT /teacher/materials/{id} atau /materials/{id}
+  Future<Map<String, dynamic>> updateMateri({
+    required int materialId,
+    required String title,
+    required String description,
+    String? fileUrl,
+  }) async {
+    var res = await ApiClient.instance.put(
+      '/teacher/materials/$materialId',
+      body: {
+        'title': title,
+        'description': description,
+        if (fileUrl != null && fileUrl.isNotEmpty) 'file_url': fileUrl,
+      },
+    );
+    if (!res.success) {
+      // Fallback ke endpoint non-teacher
+      res = await ApiClient.instance.put(
+        '/materials/$materialId',
+        body: {
+          'title': title,
+          'description': description,
+          if (fileUrl != null && fileUrl.isNotEmpty) 'file_url': fileUrl,
+        },
+      );
+    }
+    return {
+      'success': res.success,
+      'message': res.success
+          ? 'Materi berhasil diperbarui'
+          : (res.errorMessage ?? 'Gagal memperbarui materi'),
+    };
+  }
+
+  Future<Map<String, dynamic>> hapusTopik(int topicId) async {
+    final res = await ApiClient.instance.delete('/teacher/topics/$topicId');
+    return {
+      'success': res.success,
+      'message': res.success
+          ? 'Topik berhasil dihapus'
+          : (res.errorMessage ?? 'Gagal menghapus topik'),
+    };
+  }
+
+  /// Hapus materi (guru) - DELETE /teacher/materials/{id} atau /materials/{id}
+  Future<Map<String, dynamic>> hapusMateri(int materialId) async {
+    var res = await ApiClient.instance.delete('/teacher/materials/$materialId');
+    if (!res.success) {
+      res = await ApiClient.instance.delete('/materials/$materialId');
+    }
+    return {
+      'success': res.success,
+      'message': res.success
+          ? 'Materi berhasil dihapus'
+          : (res.errorMessage ?? 'Gagal menghapus materi'),
+    };
+  }
+
   /// Daftar kelas dan mapel yang diampu guru yang sedang login
  
   Future<List<GuruKelasMapel>> ambilKelasMapelGuru() async {
@@ -33,10 +173,15 @@ class MateriService {
     if (res.success) {
       final data = res.data;
       if (data is Map && data['assignments'] is List) {
-        return (data['assignments'] as List)
+        final list = (data['assignments'] as List)
             .whereType<Map<String, dynamic>>()
             .map((e) => GuruKelasMapel.fromJson(e))
             .toList();
+        // Debug log
+        for (var item in list) {
+          debugPrint('MateriService: assignment -> classSubjectId=${item.classSubjectId}, className=${item.className}, subjectName=${item.subjectName}');
+        }
+        return list;
       }
       return [];
     }
@@ -48,6 +193,9 @@ class MateriService {
       );
     }
 
+    // Fallback: try to get class_subject_id from another endpoint if available
+    // For now, return empty list to force using real API data
+    debugPrint('MateriService: /teacher/assignments returned 404, falling back to schedules (classSubjectId will be 0)');
     return _dariJadwal();
   }
 
@@ -75,11 +223,14 @@ class MateriService {
       final namaMapel = (mapel['name'] ?? '').toString();
       if (namaKelas.isEmpty || namaMapel.isEmpty) continue;
 
+      // Try to get class_subject_id from schedule if available
+      final classSubjectId = _toInt(e['class_subject_id']) ?? _toInt(e['classSubjectId']) ?? 0;
+
       unik['$namaKelas|$namaMapel'] = GuruKelasMapel(
-        classSubjectId: 0,
-        classId: int.tryParse(kelas['id'].toString()) ?? 0,
+        classSubjectId: classSubjectId,
+        classId: _toInt(kelas['id']) ?? 0,
         className: namaKelas,
-        subjectId: 0,
+        subjectId: _toInt(mapel['id']) ?? 0,
         subjectName: namaMapel,
       );
     }
@@ -90,6 +241,13 @@ class MateriService {
         return k != 0 ? k : a.subjectName.compareTo(b.subjectName);
       });
 
+    debugPrint('MateriService: _dariJadwal returned ${hasil.length} items');
+    for (var item in hasil) {
+      debugPrint('MateriService: jadwal -> classSubjectId=${item.classSubjectId}, className=${item.className}, subjectName=${item.subjectName}');
+    }
+
     return hasil;
   }
+
+  static int? _toInt(dynamic v) => v is int ? v : int.tryParse(v?.toString() ?? '');
 }

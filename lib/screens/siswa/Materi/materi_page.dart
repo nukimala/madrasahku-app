@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../services/auth_service.dart';
+import '../../../services/jadwal_service.dart';
+import '../../../services/master_data_service.dart';
 import '../../../services/materi_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
@@ -9,10 +11,12 @@ import '../tugas/upload_tugas_page.dart';
 
 class MateriPage extends StatefulWidget {
   final VoidCallback? onBack;
+  final int refreshTick;
 
   const MateriPage({
     super.key,
     this.onBack,
+    this.refreshTick = 0,
   });
 
   @override
@@ -20,16 +24,16 @@ class MateriPage extends StatefulWidget {
 }
 
 class _MateriPageState extends State<MateriPage> {
-  // Ambil kelas dari akun siswa yang sedang login (fallback ke 'Kelas VIII A' kalau kosong)
-  String _kelas = 'Kelas VIII A';
+  // Ambil kelas dari akun siswa yang sedang login (fallback ke 'Kelas VII' kalau kosong)
+  String _kelas = 'Kelas VII';
 
-  // Daftar mata pelajaran akan diisi dinamis dari data server
-  List<String> _mapelList = ['Matematika'];
+  // Daftar mata pelajaran diisi dinamis dari jadwal/database server
+  List<String> _mapelList = [];
 
   // Data materi dari database server API (disimpan per mapel)
   final Map<String, List<_Topik>> _data = {};
 
-  String _selectedMapel = 'Matematika';
+  String _selectedMapel = '';
   String _query = '';
   final Set<int> _expanded = {};
   bool _loading = true;
@@ -40,63 +44,91 @@ class _MateriPageState extends State<MateriPage> {
     _muatDataDanMateri();
   }
 
+  @override
+  void didUpdateWidget(covariant MateriPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshTick != widget.refreshTick && !_loading) {
+      _muatDataDanMateri();
+    }
+  }
+
   Future<void> _muatDataDanMateri() async {
     setState(() => _loading = true);
     try {
-      // 1. Ambil info kelas dari user yang login (fallback ke default kalau belum ada)
       final auth = AuthService.instance;
       if (auth.currentRole == 'siswa') {
-        // TODO: Nanti ambil kelas dari API /me atau SiswaService
-        // Untuk sekarang pakai default
-        _kelas = 'Kelas VIII A';
+        _kelas = auth.currentStudentClassName ?? 'Kelas Siswa';
       }
 
-      // 2. Ambil daftar materi dari API
-      final items = await MateriService.instance.ambilDaftarMateri();
-      
-      if (items.isNotEmpty && mounted) {
-        final Map<String, List<_Topik>> tempData = {};
-        final Set<String> mapelSet = {};
-
-        for (final item in items) {
-          final mapel = item.subjectName.isNotEmpty ? item.subjectName : 'Umum';
-          mapelSet.add(mapel);
-
-          final topiks = tempData.putIfAbsent(mapel, () => []);
-          final topicName = item.title.isNotEmpty ? item.title : 'Materi Pembelajaran';
-          
-          // Cari apakah topik sudah ada
-          var existing = topiks.where((t) => t.title == topicName).toList();
-          _Topik t;
-          if (existing.isEmpty) {
-            t = _Topik(topicName, []);
-            topiks.add(t);
-          } else {
-            t = existing.first;
+      // 1. Ambil daftar mata pelajaran kelas siswa dari jadwal live
+      final Set<String> mapelSet = {};
+      try {
+        final jadwal = await JadwalService.instance.ambilJadwalApi();
+        for (final j in jadwal) {
+          if (j.mataPelajaran.trim().isNotEmpty) {
+            mapelSet.add(j.mataPelajaran.trim());
           }
+        }
+      } catch (_) {}
 
-          t.items.add(_Item(
-            item.title,
-            item.description ?? 'Silakan pelajari materi berikut',
-            _Status.lanjutkan,
-            isTugas: false,
-            badge: null,
-          ));
+      // Fallback ke master mata pelajaran jika jadwal belum ada
+      if (mapelSet.isEmpty) {
+        try {
+          final masterMapel = await MasterDataService.instance.fetchMapel();
+          for (final m in masterMapel) {
+            if (m.nama.trim().isNotEmpty) {
+              mapelSet.add(m.nama.trim());
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. Ambil daftar materi dari API (filter by classId siswa)
+      final classId = auth.currentStudentClassId;
+      final items = await MateriService.instance.ambilDaftarMateri(classId: classId);
+
+      final Map<String, List<_Topik>> tempData = {};
+      for (final item in items) {
+        final mapel = item.subjectName.isNotEmpty ? item.subjectName : 'Umum';
+        mapelSet.add(mapel);
+
+        final topiks = tempData.putIfAbsent(mapel, () => []);
+        final topicName = (item.topicNama != null && item.topicNama!.isNotEmpty)
+            ? (item.topicMinggu != null
+                ? 'Minggu ${item.topicMinggu} - ${item.topicNama}'
+                : item.topicNama!)
+            : (item.title.isNotEmpty ? item.title : 'Materi Pembelajaran');
+
+        var existing = topiks.where((t) => t.title == topicName).toList();
+        _Topik t;
+        if (existing.isEmpty) {
+          t = _Topik(topicName, []);
+          topiks.add(t);
+        } else {
+          t = existing.first;
         }
 
+        t.items.add(_Item(
+          item.title,
+          item.description ?? 'Silakan pelajari materi berikut',
+          _Status.lanjutkan,
+          isTugas: false,
+          badge: null,
+          fileUrl: item.fileUrl,
+        ));
+      }
+
+      if (mounted) {
+        final sortedMapel = mapelSet.toList()..sort();
         setState(() {
           _data.clear();
           _data.addAll(tempData);
-          if (mapelSet.isNotEmpty) {
-            _mapelList = mapelSet.toList();
-            if (!_mapelList.contains(_selectedMapel)) {
-              _selectedMapel = _mapelList.first;
-            }
+          _mapelList = sortedMapel;
+          if (_mapelList.isNotEmpty && !_mapelList.contains(_selectedMapel)) {
+            _selectedMapel = _mapelList.first;
           }
           _loading = false;
         });
-      } else {
-        setState(() => _loading = false);
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
@@ -129,9 +161,11 @@ class _MateriPageState extends State<MateriPage> {
       context,
       MaterialPageRoute(
         builder: (_) => DetailMateriPage(
-          judul: topik.title,
+          judul: item.title,
           mapel: _selectedMapel,
           kelas: _kelas,
+          deskripsi: item.subtitle,
+          fileUrl: item.fileUrl,
         ),
       ),
     );
@@ -229,7 +263,10 @@ class _MateriPageState extends State<MateriPage> {
                       decoration: _boxDecoration(),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: _selectedMapel,
+                          value: _mapelList.contains(_selectedMapel)
+                              ? _selectedMapel
+                              : null,
+                          hint: const Text('Pilih Mapel'),
                           isExpanded: true,
                           icon: const Icon(
                             Icons.keyboard_arrow_down_rounded,
@@ -348,6 +385,7 @@ class _Item {
   final String subtitle;
   final bool isTugas;
   final String? badge;
+  final String? fileUrl;
   _Status status;
 
   _Item(
@@ -356,6 +394,7 @@ class _Item {
     this.status, {
     this.isTugas = false,
     this.badge,
+    this.fileUrl,
   });
 }
 

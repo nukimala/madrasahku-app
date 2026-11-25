@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../constans/app_constants.dart';
+import 'token_store.dart';
 
 class ApiResponseData {
   final bool success;
@@ -42,9 +43,9 @@ class ApiClient {
     _refreshToken = null;
   }
 
-  Map<String, String> _buildHeaders() {
+  Map<String, String> _buildHeaders({bool includeContentType = true}) {
     final headers = <String, String>{
-      'Content-Type': 'application/json',
+      if (includeContentType) 'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
@@ -95,6 +96,45 @@ class ApiClient {
     );
   }
 
+  bool _isRefreshing = false;
+
+  Future<bool> _tryRefreshToken() async {
+    if (_isRefreshing || _refreshToken == null || _refreshToken!.isEmpty) {
+      return false;
+    }
+    _isRefreshing = true;
+    try {
+      final uri = Uri.parse('${AppConstants.baseUrl}/auth/refresh');
+      final res = await http
+          .post(
+            uri,
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({'refresh_token': _refreshToken}),
+          )
+          .timeout(AppConstants.connectTimeout);
+      final parsed = _handleResponse(res);
+      if (parsed.success && parsed.data is Map && parsed.data['tokens'] is Map) {
+        final t = parsed.data['tokens'] as Map;
+        final newAccess = (t['access_token'] ?? '').toString();
+        final newRefresh = (t['refresh_token'] ?? _refreshToken ?? '').toString();
+        if (newAccess.isNotEmpty) {
+          setTokens(accessToken: newAccess, refreshToken: newRefresh);
+          try {
+            await TokenStore.save(newAccess, newRefresh);
+          } catch (_) {}
+          return true;
+        }
+      }
+    } catch (_) {
+    } finally {
+      _isRefreshing = false;
+    }
+    return false;
+  }
+
   Future<ApiResponseData> get(
     String endpoint, {
     Map<String, String>? queryParams,
@@ -105,9 +145,16 @@ class ApiClient {
         uri = uri.replace(queryParameters: queryParams);
       }
 
-      final res = await http
+      var res = await http
           .get(uri, headers: _buildHeaders())
           .timeout(AppConstants.connectTimeout);
+      if (res.statusCode == 401 && !endpoint.startsWith('/auth/')) {
+        if (await _tryRefreshToken()) {
+          res = await http
+              .get(uri, headers: _buildHeaders())
+              .timeout(AppConstants.connectTimeout);
+        }
+      }
       return _handleResponse(res);
     } on SocketException {
       return const ApiResponseData(
@@ -199,6 +246,40 @@ class ApiClient {
       return ApiResponseData(
         success: false,
         errorMessage: 'Gagal menghapus data: $e',
+        statusCode: 0,
+      );
+    }
+  }
+
+  Future<ApiResponseData> postMultipart(
+    String endpoint, {
+    Map<String, String>? fields,
+    String? fileField,
+    String? filePath,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConstants.baseUrl}$endpoint');
+      final req = http.MultipartRequest('POST', uri);
+      req.headers.addAll(_buildHeaders(includeContentType: false));
+      if (fields != null) {
+        req.fields.addAll(fields);
+      }
+      if (fileField != null && filePath != null && filePath.isNotEmpty) {
+        req.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+      }
+      final streamed = await req.send().timeout(AppConstants.connectTimeout);
+      final res = await http.Response.fromStream(streamed);
+      return _handleResponse(res);
+    } on SocketException {
+      return const ApiResponseData(
+        success: false,
+        errorMessage: 'Koneksi internet bermasalah / server offline.',
+        statusCode: 0,
+      );
+    } catch (e) {
+      return ApiResponseData(
+        success: false,
+        errorMessage: 'Gagal mengunggah berkas: $e',
         statusCode: 0,
       );
     }
