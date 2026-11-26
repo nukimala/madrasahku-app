@@ -4,6 +4,7 @@ import '../../../services/auth_service.dart';
 import '../../../services/jadwal_service.dart';
 import '../../../services/master_data_service.dart';
 import '../../../services/materi_service.dart';
+import '../../../services/tugas_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import 'detail_materi_page.dart';
@@ -83,38 +84,72 @@ class _MateriPageState extends State<MateriPage> {
         } catch (_) {}
       }
 
-      // 2. Ambil daftar materi dari API (filter by classId siswa)
+      // 2. Ambil daftar materi, tugas, dan status selesai siswa dari API
       final classId = auth.currentStudentClassId;
       final items = await MateriService.instance.ambilDaftarMateri(classId: classId);
+      final tugasItems = await TugasService.instance.ambilDaftarTugas(classId: classId);
+      final completedIds = await MateriService.instance.ambilMateriSelesai();
 
       final Map<String, List<_Topik>> tempData = {};
+
+      _Topik findOrCreateTopik(String mapel, String topicName) {
+        final topiks = tempData.putIfAbsent(mapel, () => []);
+        final existing = topiks.where((t) => t.title == topicName).toList();
+        if (existing.isNotEmpty) return existing.first;
+        final t = _Topik(topicName, []);
+        topiks.add(t);
+        return t;
+      }
+
       for (final item in items) {
         final mapel = item.subjectName.isNotEmpty ? item.subjectName : 'Umum';
         mapelSet.add(mapel);
 
-        final topiks = tempData.putIfAbsent(mapel, () => []);
         final topicName = (item.topicNama != null && item.topicNama!.isNotEmpty)
             ? (item.topicMinggu != null
                 ? 'Minggu ${item.topicMinggu} - ${item.topicNama}'
                 : item.topicNama!)
-            : (item.title.isNotEmpty ? item.title : 'Materi Pembelajaran');
+            : 'Minggu 1 - Umum';
 
-        var existing = topiks.where((t) => t.title == topicName).toList();
-        _Topik t;
-        if (existing.isEmpty) {
-          t = _Topik(topicName, []);
-          topiks.add(t);
-        } else {
-          t = existing.first;
-        }
-
+        final t = findOrCreateTopik(mapel, topicName);
+        final isDone = completedIds.contains(item.id);
         t.items.add(_Item(
           item.title,
           item.description ?? 'Silakan pelajari materi berikut',
-          _Status.lanjutkan,
+          isDone ? _Status.selesai : _Status.lanjutkan,
+          id: item.id,
           isTugas: false,
           badge: null,
           fileUrl: item.fileUrl,
+        ));
+      }
+
+      final now = DateTime.now();
+      for (final tg in tugasItems) {
+        final mapel = tg.subjectName.isNotEmpty ? tg.subjectName : 'Umum';
+        mapelSet.add(mapel);
+
+        final topicName = (tg.topicNama != null && tg.topicNama!.isNotEmpty)
+            ? (tg.topicMinggu != null
+                ? 'Minggu ${tg.topicMinggu} - ${tg.topicNama}'
+                : tg.topicNama!)
+            : 'Minggu 1 - Umum';
+
+        final t = findOrCreateTopik(mapel, topicName);
+        final parsedDl = DateTime.tryParse(tg.deadline);
+        final isLate = !tg.isSubmitted && parsedDl != null && parsedDl.isBefore(now);
+        final dlLabel = parsedDl != null
+            ? '${parsedDl.day}/${parsedDl.month}/${parsedDl.year} ${parsedDl.hour.toString().padLeft(2, '0')}.${parsedDl.minute.toString().padLeft(2, '0')}'
+            : tg.deadline;
+
+        t.items.add(_Item(
+          tg.title,
+          dlLabel.isNotEmpty ? 'Deadline: $dlLabel' : (tg.instructions ?? 'Tugas'),
+          tg.isSubmitted ? _Status.selesai : _Status.sisa,
+          id: tg.id,
+          publicId: tg.publicId,
+          isTugas: true,
+          badge: tg.isSubmitted ? null : (isLate ? 'Terlambat' : 'Tugas'),
         ));
       }
 
@@ -171,7 +206,12 @@ class _MateriPageState extends State<MateriPage> {
     );
 
     if (selesai == true && !item.isTugas && mounted) {
-      setState(() => item.status = _Status.selesai);
+      if (item.id != null) {
+        await MateriService.instance.tandaiMateriSelesai(item.id!);
+      }
+      if (mounted) {
+        setState(() => item.status = _Status.selesai);
+      }
     }
   }
 
@@ -187,9 +227,10 @@ class _MateriPageState extends State<MateriPage> {
           title: item.title,
           subject: _selectedMapel,
           deadline: deadline,
+          publicId: item.publicId,
         ),
       ),
-    );
+    ).then((_) => _muatDataDanMateri());
   }
 
   @override
@@ -381,6 +422,8 @@ class _Topik {
 }
 
 class _Item {
+  final int? id;
+  final String? publicId;
   final String title;
   final String subtitle;
   final bool isTugas;
@@ -392,6 +435,8 @@ class _Item {
     this.title,
     this.subtitle,
     this.status, {
+    this.id,
+    this.publicId,
     this.isTugas = false,
     this.badge,
     this.fileUrl,
@@ -514,12 +559,22 @@ class _ItemTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
-            Icon(
-              Icons.description,
-              size: 28,
-              color: item.isTugas
-                  ? const Color(0xFF4F8EF7)
-                  : const Color(0xFF219653),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: item.isTugas
+                    ? const Color(0xFFE0ECFF)
+                    : const Color(0xFFDFF5E7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                item.isTugas ? Icons.assignment_outlined : Icons.menu_book_rounded,
+                size: 20,
+                color: item.isTugas
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFF219653),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(

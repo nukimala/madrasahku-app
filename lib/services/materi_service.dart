@@ -1,10 +1,40 @@
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
+import 'auth_service.dart';
 import '../models/materi_model.dart';
 
 class MateriService {
   MateriService._();
   static final MateriService instance = MateriService._();
+
+  String get _completedKey {
+    final user = AuthService.instance.adminProfile.username;
+    return 'completed_materials_${user.isNotEmpty ? user : 'default'}';
+  }
+
+  Future<Set<int>> ambilMateriSelesai() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_completedKey) ?? const [];
+      return list.map((e) => int.tryParse(e)).whereType<int>().toSet();
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> tandaiMateriSelesai(int materialId) async {
+    if (materialId <= 0) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final current = await ambilMateriSelesai();
+      current.add(materialId);
+      await prefs.setStringList(
+        _completedKey,
+        current.map((e) => e.toString()).toList(),
+      );
+    } catch (_) {}
+  }
 
   Future<List<MateriItem>> ambilDaftarMateri({int? classId, int? classSubjectId}) async {
     final params = <String, String>{};

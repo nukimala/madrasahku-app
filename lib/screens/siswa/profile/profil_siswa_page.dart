@@ -4,6 +4,7 @@ import '../../../services/auth_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 import '../../auth/login_page.dart';
+import '../jadwal/jadwal_siswa_page.dart';
 import 'edit_profil_siswa.dart';
 
 class ProfilSiswaPage extends StatefulWidget {
@@ -75,15 +76,6 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
         const SnackBar(content: Text('Profil berhasil diperbarui')),
       );
     }
-  }
-
-  void _showComingSoon(String menu) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$menu akan kita buat berikutnya, ya!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _changePassword() async {
@@ -287,7 +279,12 @@ class _ProfilSiswaPageState extends State<ProfilSiswaPage> {
                     _SettingItem(
                       icon: Icons.calendar_today_outlined,
                       label: 'Jadwal Pelajaran',
-                      onTap: () => _showComingSoon('Jadwal Pelajaran'),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const JadwalSiswaPage(),
+                        ),
+                      ),
                     ),
                     _SettingItem(
                       icon: Icons.lock_outline,

@@ -38,15 +38,21 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
   Future<void> _muatDataSiswa() async {
     setState(() => _loading = true);
     try {
-      final materi = await MateriService.instance.ambilDaftarMateri();
-      final tugas = await TugasService.instance.ambilDaftarTugas();
+      final classId = AuthService.instance.currentStudentClassId;
+      final materi = await MateriService.instance.ambilDaftarMateri(classId: classId);
+      final completedIds = await MateriService.instance.ambilMateriSelesai();
+      final tugas = await TugasService.instance.ambilDaftarTugas(classId: classId);
       await JadwalService.instance.ambilJadwalApi();
+
+      final belumDikerjakan = tugas.where((t) => !t.isSubmitted).toList();
 
       if (mounted) {
         setState(() {
-          _jumlahMateri = materi.length;
-          _jumlahTugas = tugas.where((t) => !t.isSubmitted).length;
-          _tugasTerbaru = tugas.take(3).toList();
+          _jumlahMateri = materi.where((m) => !completedIds.contains(m.id)).length;
+          _jumlahTugas = belumDikerjakan.length;
+          _tugasTerbaru = (belumDikerjakan.isNotEmpty ? belumDikerjakan : tugas)
+              .take(3)
+              .toList();
           _loading = false;
         });
       }
@@ -248,7 +254,7 @@ class _SiswaHomePageState extends State<SiswaHomePage> {
                         publicId: t.publicId,
                       ),
                     ),
-                  ),
+                  ).then((_) => _muatDataSiswa()),
                 ),
               ),
             ),
