@@ -61,6 +61,43 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
         hour: menitSaatIni ~/ 60,
         minute: menitSaatIni % 60,
       ),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+            primary: AppColors.primary,
+            surface: AppColors.white,
+            onSurface: AppColors.textPrimary,
+          ),
+          timePickerTheme: TimePickerThemeData(
+            backgroundColor: AppColors.white,
+            dialBackgroundColor: const Color(0xFFF9FAFB),
+            dialHandColor: AppColors.primary,
+            dialTextColor: AppColors.textPrimary,
+            hourMinuteColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.primaryLight
+                  : const Color(0xFFF3F4F6),
+            ),
+            hourMinuteTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.primaryDark
+                  : AppColors.textPrimary,
+            ),
+            dayPeriodColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.primaryLight
+                  : AppColors.white,
+            ),
+            dayPeriodTextColor: WidgetStateColor.resolveWith(
+              (states) => states.contains(WidgetState.selected)
+                  ? AppColors.primaryDark
+                  : AppColors.textSecondary,
+            ),
+            dayPeriodBorderSide: const BorderSide(color: AppColors.border),
+          ),
+        ),
+        child: child!,
+      ),
     );
     if (picked == null || !mounted) return;
 
@@ -147,16 +184,50 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Jadwal untuk kelas tertentu'),
-                      subtitle: const Text('Kelas boleh dikosongkan'),
-                      value: _hasClass,
-                      onChanged: (value) => setState(() => _hasClass = value),
+                    _PeriodeBanner(
+                      tahunAjaran: widget.tahunAjaran,
+                      semesterLabel: widget.semester.label,
                     ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                        boxShadow: _fieldShadow,
+                      ),
+                      child: SwitchListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        activeThumbColor: AppColors.white,
+                        activeTrackColor: AppColors.primary,
+                        inactiveThumbColor: AppColors.textSecondary,
+                        inactiveTrackColor: AppColors.border,
+                        title: Text(
+                          'Jadwal untuk kelas tertentu',
+                          style: AppTextStyle.bodyLarge.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Kelas boleh dikosongkan',
+                          style: AppTextStyle.bodyMedium.copyWith(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        value: _hasClass,
+                        onChanged: (value) => setState(() => _hasClass = value),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     if (_hasClass) ...[
                       const _FieldLabel('Kelas'),
                       _DropdownField<String>(
+                        hint: 'Pilih kelas',
                         value: _kelas,
                         items: {...JadwalService.daftarKelas, ?_kelas}.toList(),
                         label: (item) => item,
@@ -166,12 +237,9 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                       ),
                       const SizedBox(height: 18),
                     ],
-                    _FieldLabel(
-                      'Periode · ${widget.tahunAjaran} · Semester ${widget.semester.label}',
-                    ),
-                    const SizedBox(height: 18),
                     const _FieldLabel('Hari'),
                     _DropdownField<HariSekolah>(
+                      hint: 'Pilih hari',
                       value: _hari,
                       items: HariSekolah.values,
                       label: (hari) => hari.label,
@@ -189,9 +257,15 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                             onTap: () => _pilihWaktu(waktuMulai: true),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text('—'),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            '—',
+                            style: AppTextStyle.bodyLarge.copyWith(
+                              fontSize: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
                         Expanded(
                           child: _TimeField(
@@ -205,6 +279,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     const SizedBox(height: 18),
                     const _FieldLabel('Mata Pelajaran'),
                     _DropdownField<String>(
+                      hint: 'Pilih mata pelajaran',
                       value: _mapel,
                       items: {...JadwalService.daftarMapel, ?_mapel}.toList(),
                       label: (item) => item,
@@ -215,6 +290,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     const SizedBox(height: 18),
                     const _FieldLabel('Guru'),
                     _DropdownField<String>(
+                      hint: 'Pilih guru',
                       value: _guru,
                       items: {...JadwalService.daftarGuru, ?_guru}.toList(),
                       label: (item) => item,
@@ -224,16 +300,21 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     const SizedBox(height: 18),
                     const _FieldLabel('Ruang (opsional)'),
                     _DropdownField<String>(
+                      hint: 'Pilih ruang (opsional)',
                       value: _ruang,
                       items: {...JadwalService.daftarRuang, ?_ruang}.toList(),
                       label: (item) => item,
                       onChanged: (value) => setState(() => _ruang = value),
                       validator: (_) => null,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Text(
                       'Jam pelajaran dapat disesuaikan untuk jadwal Senin–Kamis dan Jumat–Sabtu.',
-                      style: AppTextStyle.bodySmall.copyWith(fontSize: 12),
+                      style: AppTextStyle.bodySmall.copyWith(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -275,6 +356,54 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   );
 }
 
+const _fieldShadow = [
+  BoxShadow(
+    color: AppColors.shadow,
+    blurRadius: 6,
+    offset: Offset(0, 1),
+  ),
+];
+
+class _PeriodeBanner extends StatelessWidget {
+  final String tahunAjaran;
+  final String semesterLabel;
+
+  const _PeriodeBanner({
+    required this.tahunAjaran,
+    required this.semesterLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.primaryLight.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          Icons.calendar_today_outlined,
+          size: 16,
+          color: AppColors.primaryDark,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Periode · $tahunAjaran · Semester $semesterLabel',
+            style: AppTextStyle.bodyMedium.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primaryDark,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class _FieldLabel extends StatelessWidget {
   final String text;
 
@@ -285,12 +414,17 @@ class _FieldLabel extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       text,
-      style: AppTextStyle.label.copyWith(fontWeight: FontWeight.w600),
+      style: AppTextStyle.label.copyWith(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textPrimary,
+      ),
     ),
   );
 }
 
 class _DropdownField<T> extends StatelessWidget {
+  final String hint;
   final T? value;
   final List<T> items;
   final String Function(T) label;
@@ -298,6 +432,7 @@ class _DropdownField<T> extends StatelessWidget {
   final String? Function(T?) validator;
 
   const _DropdownField({
+    required this.hint,
     required this.value,
     required this.items,
     required this.label,
@@ -306,28 +441,76 @@ class _DropdownField<T> extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<T>(
-    initialValue: value,
-    isExpanded: true,
-    onChanged: onChanged,
-    validator: validator,
-    decoration: InputDecoration(
-      filled: true,
-      fillColor: AppColors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: _fieldShadow,
     ),
-    items: items
-        .map(
-          (item) => DropdownMenuItem<T>(
-            value: item,
-            child: Text(label(item), overflow: TextOverflow.ellipsis),
-          ),
-        )
-        .toList(),
+    child: DropdownButtonFormField<T>(
+      initialValue: value,
+      isExpanded: true,
+      onChanged: onChanged,
+      validator: validator,
+      borderRadius: BorderRadius.circular(12),
+      dropdownColor: AppColors.white,
+      icon: const Icon(
+        Icons.keyboard_arrow_down,
+        size: 24,
+        color: AppColors.textPrimary,
+      ),
+      style: AppTextStyle.bodyLarge.copyWith(
+        fontSize: 15,
+        color: AppColors.textPrimary,
+      ),
+      hint: Text(
+        hint,
+        style: AppTextStyle.hint.copyWith(fontSize: 15),
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        errorStyle: AppTextStyle.bodySmall.copyWith(
+          fontSize: 12,
+          color: AppColors.error,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
+      ),
+      items: items
+          .map(
+            (item) => DropdownMenuItem<T>(
+              value: item,
+              child: Text(
+                label(item),
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyle.bodyLarge.copyWith(fontSize: 15),
+              ),
+            ),
+          )
+          .toList(),
+    ),
   );
 }
 
@@ -343,24 +526,55 @@ class _TimeField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
-    child: InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.border),
+      boxShadow: _fieldShadow,
+    ),
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: AppTextStyle.bodySmall.copyWith(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatMenit(menit),
+                      style: AppTextStyle.bodyLarge.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.access_time_rounded,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
         ),
       ),
-      child: Text(formatMenit(menit), style: AppTextStyle.bodyLarge),
     ),
   );
 }
