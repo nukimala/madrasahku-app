@@ -57,13 +57,10 @@ class JadwalService {
     'Kumala Azizatul L., S.Pd',
     'Titik Yuliati, S.Pd',
   ];
-  static const daftarRuang = [
-    'Ruang 1',
-    'Ruang 2',
-    'Ruang 3',
-    'Ruang 4',
-    'Ruang 5',
-  ];
+  /// Daftar ruang diambil dinamis dari [daftarKelas] agar sinkron dengan
+  /// kolom `kelas.ruangan` dan `jadwal.ruangan` di database (`Ruang Kelas 7`, dst.).
+  static List<String> get daftarRuang =>
+      daftarKelas.map((kelas) => 'Ruang Kelas $kelas').toList();
 
   final List<JadwalPelajaran> _jadwal = [];
   final List<JadwalPelajaran> _jadwalApi = [];

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/jadwal_model.dart';
 import '../../../services/jadwal_service.dart';
+import '../../../services/master_data_service.dart';
 import '../../../utilis/app_colors.dart';
 import '../../../utilis/app_text_style.dart';
 
@@ -37,6 +38,12 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
   String? _ruang;
   bool _isSaving = false;
 
+  // Daftar kelas dan ruang untuk dropdown.
+  // Awalnya diisi data bawaan (fallback) agar langsung siap saat render pertama,
+  // lalu diperbarui dari database melalui MasterDataService.
+  late List<String> _daftarKelas;
+  late List<String> _daftarRuang;
+
   bool get _isEditing => widget.jadwal != null;
 
   @override
@@ -50,7 +57,42 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
     _hasClass = _kelas != null;
     _mapel = jadwal?.mataPelajaran;
     _guru = jadwal?.guru;
-    _ruang = jadwal?.ruang;
+    // Saat tambah jadwal baru dengan kelas terpilih, isi ruang otomatis sesuai kelasnya.
+    _ruang =
+        jadwal?.ruang ??
+        (_hasClass && _kelas != null ? 'Ruang Kelas $_kelas' : null);
+
+    _daftarKelas = {...JadwalService.daftarKelas, ?_kelas}.toList();
+    _daftarRuang = {...JadwalService.daftarRuang, ?_ruang}.toList();
+    _loadKelasDanRuang();
+  }
+
+  /// Mengambil daftar kelas terbaru dari API/database agar pilihan kelas dan
+  /// ruang di form jadwal selalu sinkron dengan Data Kelas di server.
+  Future<void> _loadKelasDanRuang() async {
+    try {
+      final kelasList = await MasterDataService.instance.fetchKelas();
+      if (!mounted || kelasList.isEmpty) return;
+
+      final kelasNames = kelasList
+          .map((k) => k.nama.trim())
+          .where((nama) => nama.isNotEmpty)
+          .toSet();
+      final ruangNames = kelasNames
+          .map(
+            (nama) => nama.startsWith('Kelas ')
+                ? 'Ruang $nama'
+                : 'Ruang Kelas $nama',
+          )
+          .toSet();
+
+      setState(() {
+        _daftarKelas = <String>{...kelasNames, ?_kelas}.toList();
+        _daftarRuang = <String>{...ruangNames, ?_ruang}.toList();
+      });
+    } catch (_) {
+      // Jika offline / gagal memuat dari API, tetap gunakan data fallback awal.
+    }
   }
 
   Future<void> _pilihWaktu({required bool waktuMulai}) async {
@@ -229,9 +271,18 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                       _DropdownField<String>(
                         hint: 'Pilih kelas',
                         value: _kelas,
-                        items: {...JadwalService.daftarKelas, ?_kelas}.toList(),
+                        items: _daftarKelas,
                         label: (item) => item,
-                        onChanged: (value) => setState(() => _kelas = value),
+                        onChanged: (value) => setState(() {
+                          _kelas = value;
+                          // Sinkronkan ruang otomatis saat kelas diganti, selama belum
+                          // diubah ke ruang non-kelas secara manual.
+                          if (value != null &&
+                              (_ruang == null ||
+                                  _ruang!.startsWith('Ruang Kelas '))) {
+                            _ruang = 'Ruang Kelas $value';
+                          }
+                        }),
                         validator: (value) =>
                             value == null ? 'Pilih kelas' : null,
                       ),
@@ -302,7 +353,7 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     _DropdownField<String>(
                       hint: 'Pilih ruang (opsional)',
                       value: _ruang,
-                      items: {...JadwalService.daftarRuang, ?_ruang}.toList(),
+                      items: _daftarRuang,
                       label: (item) => item,
                       onChanged: (value) => setState(() => _ruang = value),
                       validator: (_) => null,
