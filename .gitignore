@@ -29,3 +29,12 @@ ios/Flutter/flutter_export_environment.sh
 # Konfigurasi lokal Android
 android/local.properties
 android/**/buildOutputCleanup.lock
+
+# VS Code local settings
+.vscode/
+
+# iOS Flutter ephemeral
+ios/Flutter/ephemeral/
+
+# pubspec.lock (opsional - uncomment jika ini app, bukan library)
+# pubspec.lock
