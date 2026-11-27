@@ -457,6 +457,7 @@ class _GuruCard extends StatelessWidget {
             ),
           ),
           PopupMenuButton<String>(
+            color: AppColors.white,
             padding: const EdgeInsets.all(4),
             icon: const Icon(
               Icons.more_vert,

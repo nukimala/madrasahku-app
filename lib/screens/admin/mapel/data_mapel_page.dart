@@ -338,6 +338,7 @@ class _MapelCard extends StatelessWidget {
         const SizedBox(width: 8),
         _StatusBadge(aktif: mapel.aktif),
         PopupMenuButton<String>(
+          color: AppColors.white,
           onSelected: onAction,
           icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
           itemBuilder: (_) => [

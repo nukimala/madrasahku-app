@@ -323,6 +323,7 @@ class _KelasCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           PopupMenuButton<String>(
+            color: AppColors.white,
             onSelected: onAction,
             icon: const Icon(Icons.more_vert, color: AppColors.textPrimary),
             itemBuilder: (_) => [
@@ -401,6 +402,7 @@ class _TingkatFilter extends StatelessWidget {
       child: DropdownButton<String>(
         key: const ValueKey('filter-tingkat'),
         value: value,
+        dropdownColor: AppColors.white,
         borderRadius: BorderRadius.circular(12),
         items: const ['Semua', '7', '8', '9']
             .map(

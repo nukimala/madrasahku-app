@@ -660,6 +660,7 @@ class _RekapPresensiPageState extends State<RekapPresensiPage> {
       child: DropdownButton<String>(
         value: validValue,
         isExpanded: true,
+        dropdownColor: AppColors.white,
         icon: const Padding(
           padding: EdgeInsets.only(right: 16),
           child: Icon(

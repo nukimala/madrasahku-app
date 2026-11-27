@@ -587,6 +587,7 @@ class _Selector<T> extends StatelessWidget {
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
+              dropdownColor: AppColors.white,
               onChanged: onChanged,
               items: items
                   .map(
@@ -632,6 +633,7 @@ class _FilterDropdown<T> extends StatelessWidget {
       child: DropdownButton<T>(
         value: value,
         isExpanded: true,
+        dropdownColor: AppColors.white,
         onChanged: onChanged,
         items: items,
         selectedItemBuilder: (_) => items
@@ -839,6 +841,7 @@ class _ScheduleCard extends StatelessWidget {
           ),
         ),
         PopupMenuButton<String>(
+          color: AppColors.white,
           padding: EdgeInsets.zero,
           onSelected: (value) => value == 'edit' ? onEdit() : onDelete(),
           itemBuilder: (_) => const [
