@@ -7,8 +7,13 @@ import '../../../utilis/app_text_style.dart';
 
 class TambahGuruPage extends StatefulWidget {
   final GuruItem? guru;
+  final List<GuruItem> existingGuruList;
 
-  const TambahGuruPage({super.key, this.guru});
+  const TambahGuruPage({
+    super.key,
+    this.guru,
+    this.existingGuruList = const [],
+  });
 
   @override
   State<TambahGuruPage> createState() => _TambahGuruPageState();
@@ -46,6 +51,9 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
       _emailController.text = guru.email;
       _teleponController.text = guru.telepon;
       _selectedMapel = guru.mapel.isNotEmpty ? guru.mapel : null;
+      if (_selectedMapel != null && !_mapelList.contains(_selectedMapel)) {
+        _mapelList.insert(0, _selectedMapel!);
+      }
     }
     _loadMapel();
   }
@@ -55,7 +63,7 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
       final list = await _guruService.fetchMapel();
       if (mounted && list.isNotEmpty) {
         setState(() {
-          _mapelList = list;
+          _mapelList = list.toSet().toList();
           if (_selectedMapel != null && !_mapelList.contains(_selectedMapel)) {
             _mapelList.insert(0, _selectedMapel!);
           }
@@ -71,6 +79,15 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
     _emailController.dispose();
     _teleponController.dispose();
     super.dispose();
+  }
+
+  bool _isDuplicate(bool Function(GuruItem item) predicate) {
+    final currentId = widget.guru?.id;
+    return widget.existingGuruList.any((item) {
+      if (currentId != null && item.id == currentId) return false;
+      if (widget.guru != null && identical(item, widget.guru)) return false;
+      return predicate(item);
+    });
   }
 
   void _submit() {
@@ -125,9 +142,19 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
                       _AppTextField(
                         controller: _namaController,
                         hint: 'Masukkan nama guru',
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Nama wajib diisi'
-                            : null,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Nama wajib diisi';
+                          }
+                          if (_isDuplicate(
+                            (g) =>
+                                g.nama.trim().toLowerCase() ==
+                                v.trim().toLowerCase(),
+                          )) {
+                            return 'Nama guru sudah terdaftar';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -136,6 +163,16 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
                         controller: _nipController,
                         hint: 'Masukkan NIP atau NUPTK (opsional)',
                         keyboardType: TextInputType.number,
+                        validator: (v) {
+                          if (v != null &&
+                              v.trim().isNotEmpty &&
+                              _isDuplicate(
+                                (g) => g.nipNuptk.trim() == v.trim(),
+                              )) {
+                            return 'NIP/NUPTK sudah dipakai';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
 
@@ -160,19 +197,33 @@ class _TambahGuruPageState extends State<TambahGuruPage> {
                             return 'Email wajib diisi';
                           }
                           if (!v.contains('@')) return 'Email tidak valid';
+                          if (_isDuplicate(
+                            (g) =>
+                                g.email.trim().toLowerCase() ==
+                                v.trim().toLowerCase(),
+                          )) {
+                            return 'Email sudah dipakai';
+                          }
                           return null;
                         },
                       ),
                       const SizedBox(height: 20),
 
-                      const _FieldLabel('No. Telepon'),
+                      const _FieldLabel('No. Telepon (Opsional)'),
                       _AppTextField(
                         controller: _teleponController,
-                        hint: 'Masukkan Nomer Telepon',
+                        hint: 'Masukkan Nomer Telepon (opsional)',
                         keyboardType: TextInputType.phone,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'No. telepon wajib diisi'
-                            : null,
+                        validator: (v) {
+                          if (v != null &&
+                              v.trim().isNotEmpty &&
+                              _isDuplicate(
+                                (g) => g.telepon.trim() == v.trim(),
+                              )) {
+                            return 'Nomor telepon sudah dipakai';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
 

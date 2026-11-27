@@ -66,7 +66,9 @@ class _DataGuruPageState extends State<DataGuruPage> {
   Future<void> _openTambah() async {
     final guru = await Navigator.push<GuruItem>(
       context,
-      MaterialPageRoute(builder: (_) => const TambahGuruPage()),
+      MaterialPageRoute(
+        builder: (_) => TambahGuruPage(existingGuruList: _guruList),
+      ),
     );
 
     if (!mounted || guru == null) return;
@@ -98,7 +100,12 @@ class _DataGuruPageState extends State<DataGuruPage> {
   Future<void> _openEdit(GuruItem guru) async {
     final updatedGuru = await Navigator.push<GuruItem>(
       context,
-      MaterialPageRoute(builder: (_) => TambahGuruPage(guru: guru)),
+      MaterialPageRoute(
+        builder: (_) => TambahGuruPage(
+          guru: guru,
+          existingGuruList: _guruList,
+        ),
+      ),
     );
 
     if (!mounted || updatedGuru == null) return;
@@ -142,6 +149,7 @@ class _DataGuruPageState extends State<DataGuruPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
         title: Text(
           'Hapus Guru',
           style: AppTextStyle.headingSmall.copyWith(fontSize: 18),
