@@ -329,14 +329,56 @@ class _TambahJadwalPageState extends State<TambahJadwalPage> {
                     ),
                     const SizedBox(height: 18),
                     const _FieldLabel('Mata Pelajaran'),
-                    _DropdownField<String>(
-                      hint: 'Pilih mata pelajaran',
-                      value: _mapel,
-                      items: {...JadwalService.daftarMapel, ?_mapel}.toList(),
-                      label: (item) => item,
-                      onChanged: (value) => setState(() => _mapel = value),
-                      validator: (value) =>
-                          value == null ? 'Pilih mata pelajaran' : null,
+                    // LOGIKA KHUSUS MODE EDIT MATA PELAJARAN:
+                    // Sesuai kebutuhan, saat mengedit jadwal (misal: Nariyahan), mapel yang
+                    // sedang diedit tersebut tidak boleh muncul di daftar pilihan dropdown.
+                    //
+                    // Masalah teknis di Flutter:
+                    // `DropdownButtonFormField` mewajibkan `value` yang aktif ada di dalam `items`.
+                    // Jika `Nariyahan` kita hapus dari `items` tapi `value` tetap `Nariyahan`,
+                    // Flutter akan melempar error assertion.
+                    //
+                    // Solusinya:
+                    // 1. Jika user belum memilih mapel baru (`mapelMasihAwal == true`),
+                    //    kita kirim `value: null` ke dropdown, lalu tampilkan nama mapel awal
+                    //    lewat `hint` dengan warna teks normal (`isHintAsValue: true`).
+                    // 2. Saat user memilih mapel baru (misal: Matematika), `_mapel` berubah
+                    //    jadi Matematika, sehingga `mapelMasihAwal` menjadi `false` dan
+                    //    dropdown menampilkan `value: _mapel` seperti biasa.
+                    Builder(
+                      builder: (context) {
+                        // Ambil nama mapel asli sebelum diedit (null jika sedang tambah jadwal baru).
+                        final mapelAwal = widget.jadwal?.mataPelajaran;
+
+                        // Bernilai true selama user sedang edit DAN belum mengganti mapel awal.
+                        final mapelMasihAwal =
+                            _isEditing && _mapel == mapelAwal;
+
+                        // Susun daftar pilihan dropdown tanpa menyertakan `mapelAwal` saat mode edit.
+                        final pilihanMapel = <String>{
+                          ...JadwalService.daftarMapel,
+                          // Pastikan mapel baru yang dipilih user tetap ada di daftar jika belum termasuk.
+                          if (!mapelMasihAwal && _mapel != null) _mapel!,
+                        }.where((item) => !_isEditing || item != mapelAwal).toList();
+
+                        return _DropdownField<String>(
+                          // Jika mapel masih sama dengan mapel awal, tampilkan di `hint` agar
+                          // kotak input tidak kosong meski `value`-nya bernilai null.
+                          hint: mapelMasihAwal
+                              ? mapelAwal!
+                              : 'Pilih mata pelajaran',
+                          isHintAsValue: mapelMasihAwal,
+                          value: mapelMasihAwal ? null : _mapel,
+                          items: pilihanMapel,
+                          label: (item) => item,
+                          onChanged: (value) => setState(() => _mapel = value),
+                          // Validator mengecek variabel state `_mapel` (bukan parameter `value`
+                          // milik FormField), supaya jika user langsung klik Simpan tanpa
+                          // mengubah mapel awal, validasi tetap dianggap valid.
+                          validator: (_) =>
+                              _mapel == null ? 'Pilih mata pelajaran' : null,
+                        );
+                      },
                     ),
                     const SizedBox(height: 18),
                     const _FieldLabel('Guru'),
@@ -476,6 +518,9 @@ class _FieldLabel extends StatelessWidget {
 
 class _DropdownField<T> extends StatelessWidget {
   final String hint;
+  // Jika true, teks `hint` ditampilkan dengan warna teks aktif (bukan warna placeholder),
+  // dipakai saat mode edit agar mapel awal tetap terbaca meski disembunyikan dari daftar pilihan.
+  final bool isHintAsValue;
   final T? value;
   final List<T> items;
   final String Function(T) label;
@@ -484,6 +529,7 @@ class _DropdownField<T> extends StatelessWidget {
 
   const _DropdownField({
     required this.hint,
+    this.isHintAsValue = false,
     required this.value,
     required this.items,
     required this.label,
@@ -515,7 +561,13 @@ class _DropdownField<T> extends StatelessWidget {
       ),
       hint: Text(
         hint,
-        style: AppTextStyle.hint.copyWith(fontSize: 15),
+        overflow: TextOverflow.ellipsis,
+        style: isHintAsValue
+            ? AppTextStyle.bodyLarge.copyWith(
+                fontSize: 15,
+                color: AppColors.textPrimary,
+              )
+            : AppTextStyle.hint.copyWith(fontSize: 15),
       ),
       decoration: InputDecoration(
         filled: true,
