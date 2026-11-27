@@ -366,18 +366,22 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
       ),
       body: Column(
         children: [
+          // Bagian header filter & ringkasan jadwal dibuat rapi dengan jarak dan ukuran teks yang konsisten
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Subjudul menggunakan bodyMedium (13px) agar seimbang dan mudah dibaca
                 Text(
                   'Atur dan tinjau jadwal pelajaran',
-                  style: AppTextStyle.bodySmall.copyWith(
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 14),
+                // Pilihan periode (Tahun Ajaran & Semester)
                 Row(
                   children: [
                     Expanded(
@@ -393,7 +397,11 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                         trailing: IconButton(
                           tooltip: 'Tambah tahun ajaran',
                           onPressed: _tambahTahunAjaran,
-                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          icon: const Icon(
+                            Icons.add_circle_outline,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
@@ -420,22 +428,49 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _Statistic(count: '${filtered.length}', label: 'jadwal'),
-                    const SizedBox(width: 18),
-                    _Statistic(count: '${days.length}', label: 'hari'),
-                    const SizedBox(width: 18),
-                    _Statistic(count: '${subjects.length}', label: 'mapel'),
-                  ],
+                // Bar ringkasan statistik dibungkus kartu putih agar terlihat rapi & sejajar
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppColors.shadow,
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _Statistic(count: '${filtered.length}', label: 'jadwal'),
+                      Container(width: 1, height: 20, color: AppColors.border),
+                      _Statistic(count: '${days.length}', label: 'hari'),
+                      Container(width: 1, height: 20, color: AppColors.border),
+                      _Statistic(count: '${subjects.length}', label: 'mapel'),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
+                // Kolom pencarian dengan ukuran teks dan border yang seragam
                 TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
+                  style: AppTextStyle.bodyLarge.copyWith(fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'Cari mata pelajaran atau guru',
-                    prefixIcon: const Icon(Icons.search),
+                    hintStyle: AppTextStyle.hint.copyWith(fontSize: 13),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
                     suffixIcon: _searchController.text.isEmpty
                         ? null
                         : IconButton(
@@ -444,22 +479,31 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                               _searchController.clear();
                               setState(() {});
                             },
-                            icon: const Icon(Icons.close),
+                            icon: const Icon(Icons.close, size: 20),
                           ),
                     filled: true,
                     fillColor: AppColors.white,
+                    isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                       borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
+                // Baris filter Hari, Kelas, dan tombol ganti tampilan (Daftar / Mingguan)
                 Row(
                   children: [
                     Expanded(
@@ -506,8 +550,21 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
                       ),
                     ],
                     const SizedBox(width: 8),
+                    // Tombol switcher mode tampilan dibuat compact agar dropdown filter tidak terpotong
                     SegmentedButton<_TampilanJadwal>(
                       showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                        backgroundColor: AppColors.white,
+                        selectedBackgroundColor: AppColors.primaryLight,
+                        selectedForegroundColor: AppColors.primaryDark,
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       segments: const [
                         ButtonSegment(
                           value: _TampilanJadwal.daftar,
@@ -555,6 +612,7 @@ class _DataJadwalPageState extends State<DataJadwalPage> {
   }
 }
 
+// Widget dropdown untuk memilih Tahun Ajaran dan Semester dengan tipografi seragam
 class _Selector<T> extends StatelessWidget {
   final String label;
   final T value;
@@ -576,9 +634,22 @@ class _Selector<T> extends StatelessWidget {
   Widget build(BuildContext context) => InputDecorator(
     decoration: InputDecoration(
       labelText: label,
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      labelStyle: AppTextStyle.label.copyWith(
+        fontSize: 12,
+        color: AppColors.textSecondary,
+      ),
+      filled: true,
+      fillColor: AppColors.white,
+      // Padding vertikal 10px agar tinggi kotak selector sejajar dengan kolom pencarian (~44px)
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
     ),
     child: Row(
       children: [
@@ -587,7 +658,13 @@ class _Selector<T> extends StatelessWidget {
             child: DropdownButton<T>(
               value: value,
               isExpanded: true,
+              isDense: true,
               dropdownColor: AppColors.white,
+              // Gunakan Inter 13px agar ukuran teks dropdown konsisten dengan halaman lain
+              style: AppTextStyle.bodyLarge.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
               onChanged: onChanged,
               items: items
                   .map(
@@ -609,6 +686,7 @@ class _Selector<T> extends StatelessWidget {
   );
 }
 
+// Widget dropdown filter (Hari & Kelas) dengan ukuran teks 13px agar label 'Semua kelas' tidak terpotong
 class _FilterDropdown<T> extends StatelessWidget {
   final T value;
   final String label;
@@ -625,22 +703,44 @@ class _FilterDropdown<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InputDecorator(
     decoration: InputDecoration(
-      isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: AppColors.white,
+      // Padding vertikal 10px agar tinggi dropdown filter seragam dengan selector & kolom pencarian
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
     ),
     child: DropdownButtonHideUnderline(
       child: DropdownButton<T>(
         value: value,
         isExpanded: true,
+        isDense: true,
+        iconSize: 20,
         dropdownColor: AppColors.white,
+        style: AppTextStyle.bodyMedium.copyWith(
+          fontSize: 13,
+          color: AppColors.textPrimary,
+        ),
         onChanged: onChanged,
         items: items,
         selectedItemBuilder: (_) => items
             .map(
               (item) => Align(
                 alignment: Alignment.centerLeft,
-                child: Text(label, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
             )
             .toList(),
@@ -649,6 +749,7 @@ class _FilterDropdown<T> extends StatelessWidget {
   );
 }
 
+// Widget angka statistik ringkas (jumlah jadwal, hari, dan mapel)
 class _Statistic extends StatelessWidget {
   final String count;
   final String label;
@@ -657,18 +758,23 @@ class _Statistic extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
     children: [
       Text(
         count,
         style: AppTextStyle.headingSmall.copyWith(
           color: AppColors.primaryDark,
-          fontSize: 16,
+          fontSize: 15,
         ),
       ),
-      const SizedBox(width: 4),
+      const SizedBox(width: 5),
       Text(
         label,
-        style: AppTextStyle.bodySmall.copyWith(color: AppColors.textSecondary),
+        // Gunakan 12px agar proporsional dengan angkanya (sebelumnya 10px terlalu kecil)
+        style: AppTextStyle.bodyMedium.copyWith(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+        ),
       ),
     ],
   );
@@ -713,6 +819,7 @@ class _ScheduleList extends StatelessWidget {
   );
 }
 
+// Tampilan mingguan menyusun hari ke samping (scroll horizontal)
 class _WeeklySchedule extends StatelessWidget {
   final List<JadwalPelajaran> schedules;
   final ValueChanged<JadwalPelajaran> onEdit;
@@ -733,21 +840,35 @@ class _WeeklySchedule extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final day in HariSekolah.values)
-            if (schedules.any((item) => item.hari == day))
+            if (schedules.any((item) => item.hari == day)) ...[
+              // Lebar kolom 295px memberi ruang lebih lega untuk teks di setiap kartu hari
               SizedBox(
-                width: 270,
+                width: 295,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header hari dilengkapi jumlah jadwal di hari tersebut
                       Padding(
                         padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
-                        child: Text(
-                          day.label,
-                          style: AppTextStyle.headingSmall.copyWith(
-                            fontSize: 16,
-                          ),
+                        child: Row(
+                          children: [
+                            Text(
+                              day.label,
+                              style: AppTextStyle.headingSmall.copyWith(
+                                fontSize: 15,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${schedules.where((item) => item.hari == day).length} jadwal',
+                              style: AppTextStyle.bodyMedium.copyWith(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       for (final item in schedules.where(
@@ -762,12 +883,19 @@ class _WeeklySchedule extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
         ],
       ),
     ),
   );
 }
 
+// Kartu item jadwal disusun vertikal agar teks mata pelajaran & guru mendapat lebar penuh
+// dan tidak terpotong di tampilan Daftar maupun Mingguan:
+// Baris 1: Pill Waktu + Badge Kelas + Tombol menu (Edit/Hapus)
+// Baris 2: Nama mata pelajaran (lebar penuh)
+// Baris 3: Nama guru (lebar penuh)
+// Baris 4: Kode mapel & nama ruang
 class _ScheduleCard extends StatelessWidget {
   final JadwalPelajaran jadwal;
   final VoidCallback onEdit;
@@ -780,78 +908,134 @@ class _ScheduleCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 9),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    decoration: BoxDecoration(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: AppColors.border),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 4,
-          height: 54,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(4),
+  Widget build(BuildContext context) {
+    // Gabungkan informasi tambahan (Kode Mapel dan Ruang) untuk baris paling bawah
+    final infoTambahan = <String>[
+      if (jadwal.kodeMapel != null && jadwal.kodeMapel!.isNotEmpty)
+        'Kode ${jadwal.kodeMapel}',
+      if (jadwal.ruang != null && jadwal.ruang!.isNotEmpty) jadwal.ruang!,
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 68,
-          child: Text(
-            jadwal.tampilanWaktu,
-            style: AppTextStyle.bodySmall.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.primaryDark,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Baris 1: Pill waktu di kiri, badge kelas di sebelahnya, dan tombol menu di kanan
+          Row(
             children: [
-              Text(
-                jadwal.mataPelajaran,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyle.headingSmall.copyWith(fontSize: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  jadwal.tampilanWaktu,
+                  style: AppTextStyle.bodyMedium.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
               ),
-              if (jadwal.kodeMapel != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  'Kode ${jadwal.kodeMapel}',
-                  style: AppTextStyle.bodySmall.copyWith(fontSize: 10),
+              if (jadwal.kelas != null && jadwal.kelas!.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    'Kelas ${jadwal.kelas}',
+                    style: AppTextStyle.bodyMedium.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 3),
-              Text(
-                [
-                  jadwal.guru,
-                  if (jadwal.tampilanLokasi.isNotEmpty) jadwal.tampilanLokasi,
-                ].join(' · '),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyle.bodySmall.copyWith(fontSize: 11),
+              const Spacer(),
+              PopupMenuButton<String>(
+                color: AppColors.white,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                iconSize: 20,
+                onSelected: (value) => value == 'edit' ? onEdit() : onDelete(),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'delete', child: Text('Hapus')),
+                ],
               ),
             ],
           ),
-        ),
-        PopupMenuButton<String>(
-          color: AppColors.white,
-          padding: EdgeInsets.zero,
-          onSelected: (value) => value == 'edit' ? onEdit() : onDelete(),
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'delete', child: Text('Hapus')),
+          const SizedBox(height: 8),
+          // Baris 2: Nama mata pelajaran mendapat lebar penuh sehingga tidak terpotong
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              jadwal.mataPelajaran,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyle.headingSmall.copyWith(fontSize: 14.5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Baris 3: Nama guru dengan lebar penuh
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Text(
+              jadwal.guru,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyle.bodyMedium.copyWith(
+                fontSize: 12.5,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          // Baris 4: Kode mapel & nama ruang (jika ada)
+          if (infoTambahan.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: Text(
+                infoTambahan.join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyle.bodyMedium.copyWith(
+                  fontSize: 11.5,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
           ],
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _EmptySchedule extends StatelessWidget {
